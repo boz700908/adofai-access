@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\Programiranje\\C#\\A Dance of Fire and Ice Mod\\ADOFAI Access\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{6A02F590-4A7F-5F18-44A1-1507D7A5016F}|ADOFAI Access\\ADOFAI Access.csproj|d:\\programiranje\\c#\\a dance of fire and ice mod\\adofai access\\adofai access\\core.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6A02F590-4A7F-5F18-44A1-1507D7A5016F}|ADOFAI Access\\ADOFAI Access.csproj|solutionrelative:adofai access\\core.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Core.cs",
+              "DocumentMoniker": "D:\\Programiranje\\C#\\A Dance of Fire and Ice Mod\\ADOFAI Access\\ADOFAI Access\\Core.cs",
+              "RelativeDocumentMoniker": "ADOFAI Access\\Core.cs",
+              "ToolTip": "D:\\Programiranje\\C#\\A Dance of Fire and Ice Mod\\ADOFAI Access\\ADOFAI Access\\Core.cs",
+              "RelativeToolTip": "ADOFAI Access\\Core.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAwAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-10T12:06:33.033Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
