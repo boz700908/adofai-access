@@ -24,6 +24,7 @@ namespace ADOFAI_Access
         public override void OnUpdate()
         {
             MenuNarration.Tick();
+            AccessibleLevelSelectMenu.Tick();
         }
     }
 }

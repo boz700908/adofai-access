@@ -423,6 +423,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<Compile Include="AccessibleLevelSelectMenu.cs" />
 		<Compile Include="Core.cs" />
 		<Compile Include="MenuNarration.cs" />
 		<Compile Include="Tolk.cs" />
