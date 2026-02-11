@@ -426,6 +426,7 @@
 		<Compile Include="AccessibleLevelSelectMenu.cs" />
 		<Compile Include="Core.cs" />
 		<Compile Include="LevelDataDump.cs" />
+		<Compile Include="LevelPreview.cs" />
 		<Compile Include="MenuNarration.cs" />
 		<Compile Include="Tolk.cs" />
 	</ItemGroup>
