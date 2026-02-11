@@ -27,6 +27,7 @@ namespace ADOFAI_Access
             AccessibleLevelSelectMenu.Tick();
             LevelDataDump.Tick();
             LevelPreview.Tick();
+            PatternPreview.Tick();
         }
     }
 }

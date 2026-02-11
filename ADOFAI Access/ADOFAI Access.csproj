@@ -426,8 +426,10 @@
 		<Compile Include="AccessibleLevelSelectMenu.cs" />
 		<Compile Include="Core.cs" />
 		<Compile Include="LevelDataDump.cs" />
+		<Compile Include="PatternPreview.cs" />
 		<Compile Include="LevelPreview.cs" />
 		<Compile Include="MenuNarration.cs" />
+		<Compile Include="TapCueService.cs" />
 		<Compile Include="Tolk.cs" />
 	</ItemGroup>
 	

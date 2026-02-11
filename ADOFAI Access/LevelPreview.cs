@@ -1,10 +1,7 @@
 using System;
-using System.Collections;
-using System.IO;
 using HarmonyLib;
 using MelonLoader;
 using UnityEngine;
-using UnityEngine.Networking;
 
 namespace ADOFAI_Access
 {
@@ -22,28 +19,14 @@ namespace ADOFAI_Access
         private static bool _previousSpeedTrialMode;
         private static float _previousSpeedTrialValue;
 
-        private static AudioSource _cueSource;
-        private static AudioSource[] _cuePool;
-        private static int _cuePoolIndex;
-        private static AudioClip _cueClip;
-        private static AudioClip _fallbackClip;
-        private static bool _isLoadingCue;
-        private static string _loadedCuePath = string.Empty;
         private static bool _toggleHintSpoken;
         private static int _lastPredictedSeqId = -1;
         private static double _lastPredictedDueDsp = double.MinValue;
         private static float _lastCueAt;
 
         public static bool IsActive => _active;
-
-        public static string CueFilePath
-        {
-            get
-            {
-                string gameRoot = GetGameRoot();
-                return Path.Combine(gameRoot, "UserData", "ADOFAI_Access", "Audio", "level_preview_tap.wav");
-            }
-        }
+        public static string CueFilePath => TapCueService.CueFilePath;
+        public static string ToggleHint => "Press F8 to toggle level preview";
 
         public static void Tick()
         {
@@ -84,8 +67,6 @@ namespace ADOFAI_Access
             TryPlayPredictedCue();
         }
 
-        public static string ToggleHint => "Press F8 to toggle level preview";
-
         public static bool Toggle()
         {
             if (_active)
@@ -96,6 +77,7 @@ namespace ADOFAI_Access
 
             return StartInternal();
         }
+
         public static void AnnouncePreviewComplete()
         {
             if (!_active)
@@ -126,18 +108,8 @@ namespace ADOFAI_Access
                 return;
             }
 
-            EnsureAudioReady();
-            if (_cueSource == null)
-            {
-                return;
-            }
-
-            AudioClip clip = _cueClip ?? _fallbackClip;
-            if (clip != null)
-            {
-                _cueSource.PlayOneShot(clip, 1f);
-                _lastCueAt = now;
-            }
+            TapCueService.PlayCueNow();
+            _lastCueAt = now;
         }
 
         private static void PlayTapCueAt(double dspTime)
@@ -147,27 +119,7 @@ namespace ADOFAI_Access
                 return;
             }
 
-            EnsureAudioReady();
-            AudioClip clip = _cueClip ?? _fallbackClip;
-            if (clip == null || _cuePool == null || _cuePool.Length == 0)
-            {
-                return;
-            }
-
-            if (_cuePoolIndex >= _cuePool.Length)
-            {
-                _cuePoolIndex = 0;
-            }
-
-            AudioSource source = _cuePool[_cuePoolIndex];
-            _cuePoolIndex++;
-            if (source == null)
-            {
-                return;
-            }
-
-            source.clip = clip;
-            source.PlayScheduled(dspTime);
+            TapCueService.PlayCueAt(dspTime);
         }
 
         private static bool StartInternal()
@@ -188,6 +140,11 @@ namespace ADOFAI_Access
             _previousSpeedTrialMode = GCS.speedTrialMode;
             _previousSpeedTrialValue = GCS.currentSpeedTrial;
 
+            if (PatternPreview.IsActive)
+            {
+                PatternPreview.Toggle();
+            }
+
             _active = true;
             GCS.practiceMode = true;
             GCS.speedTrialMode = false;
@@ -196,7 +153,6 @@ namespace ADOFAI_Access
             _lastPredictedDueDsp = double.MinValue;
             _lastCueAt = 0f;
 
-            EnsureAudioReady();
             MelonLogger.Msg("[ADOFAI Access] Level preview enabled.");
             MenuNarration.Speak("Level preview on", interrupt: true);
             return true;
@@ -210,6 +166,7 @@ namespace ADOFAI_Access
             }
 
             _active = false;
+            TapCueService.StopAllCues();
             RDC.auto = _previousAuto;
             GCS.practiceMode = _previousPracticeMode;
             GCS.speedTrialMode = _previousSpeedTrialMode;
@@ -302,127 +259,6 @@ namespace ADOFAI_Access
 
             // If slightly past center due to frame timing, play immediately as late-grace fallback.
             PlayTapCue();
-        }
-
-        private static void EnsureAudioReady()
-        {
-            EnsureAudioSource();
-            EnsureFallbackClip();
-
-            string cuePath = CueFilePath;
-            if (_cueClip != null && string.Equals(_loadedCuePath, cuePath, StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
-            if (_isLoadingCue)
-            {
-                return;
-            }
-
-            if (!File.Exists(cuePath))
-            {
-                _cueClip = null;
-                _loadedCuePath = string.Empty;
-                return;
-            }
-
-            _isLoadingCue = true;
-            MelonCoroutines.Start(LoadCueClip(cuePath));
-        }
-
-        private static void EnsureAudioSource()
-        {
-            if (_cueSource != null)
-            {
-                return;
-            }
-
-            GameObject go = new GameObject("ADOFAI_Access_LevelPreviewAudio");
-            UnityEngine.Object.DontDestroyOnLoad(go);
-            _cueSource = go.AddComponent<AudioSource>();
-            _cueSource.playOnAwake = false;
-            _cueSource.spatialBlend = 0f;
-            _cueSource.volume = 1f;
-
-            _cuePool = new AudioSource[4];
-            for (int i = 0; i < _cuePool.Length; i++)
-            {
-                AudioSource pooled = go.AddComponent<AudioSource>();
-                pooled.playOnAwake = false;
-                pooled.spatialBlend = 0f;
-                pooled.volume = 1f;
-                _cuePool[i] = pooled;
-            }
-        }
-
-        private static void EnsureFallbackClip()
-        {
-            if (_fallbackClip != null)
-            {
-                return;
-            }
-
-            const int sampleRate = 44100;
-            const float durationSeconds = 0.045f;
-            int sampleCount = Mathf.CeilToInt(sampleRate * durationSeconds);
-            float[] samples = new float[sampleCount];
-            float frequency = 1760f;
-            for (int i = 0; i < sampleCount; i++)
-            {
-                float t = i / (float)sampleRate;
-                float envelope = 1f - (i / (float)sampleCount);
-                samples[i] = Mathf.Sin(2f * Mathf.PI * frequency * t) * envelope * 0.25f;
-            }
-
-            _fallbackClip = AudioClip.Create("ADOFAI_Access_DefaultPreviewCue", sampleCount, 1, sampleRate, false);
-            _fallbackClip.SetData(samples, 0);
-        }
-
-        private static IEnumerator LoadCueClip(string cuePath)
-        {
-            string uri = new Uri(cuePath).AbsoluteUri;
-            using (UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(uri, AudioType.WAV))
-            {
-                yield return request.SendWebRequest();
-
-                if (request.result == UnityWebRequest.Result.Success)
-                {
-                    AudioClip clip = DownloadHandlerAudioClip.GetContent(request);
-                    if (clip != null)
-                    {
-                        _cueClip = clip;
-                        _loadedCuePath = cuePath;
-                    }
-                    else
-                    {
-                        _cueClip = null;
-                        _loadedCuePath = string.Empty;
-                    }
-                }
-                else
-                {
-                    MelonLogger.Warning($"[ADOFAI Access] Failed to load level preview cue from {cuePath}: {request.error}");
-                    _cueClip = null;
-                    _loadedCuePath = string.Empty;
-                }
-            }
-
-            _isLoadingCue = false;
-        }
-
-        private static string GetGameRoot()
-        {
-            if (!string.IsNullOrEmpty(Application.dataPath))
-            {
-                string root = Path.GetDirectoryName(Application.dataPath);
-                if (!string.IsNullOrEmpty(root))
-                {
-                    return root;
-                }
-            }
-
-            return AppDomain.CurrentDomain.BaseDirectory;
         }
     }
 
