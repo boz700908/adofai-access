@@ -73,7 +73,7 @@ namespace ADOFAI_Access
 
             if (!IsGameplayRuntimeAvailable())
             {
-                StopInternal(speak: false);
+                StopInternal(speak: false, restartLevel: false);
                 return;
             }
 
@@ -90,7 +90,7 @@ namespace ADOFAI_Access
         {
             if (_active)
             {
-                StopInternal(speak: true);
+                StopInternal(speak: true, restartLevel: true);
                 return true;
             }
 
@@ -104,6 +104,13 @@ namespace ADOFAI_Access
             }
 
             MenuNarration.Speak("Preview complete", interrupt: true);
+            StopInternal(speak: false, restartLevel: false);
+
+            scrController controller = ADOBase.controller;
+            if (controller != null)
+            {
+                controller.Restart();
+            }
         }
 
         public static void PlayTapCue()
@@ -195,7 +202,7 @@ namespace ADOFAI_Access
             return true;
         }
 
-        private static void StopInternal(bool speak)
+        private static void StopInternal(bool speak, bool restartLevel)
         {
             if (!_active)
             {
@@ -215,6 +222,15 @@ namespace ADOFAI_Access
             {
                 MelonLogger.Msg("[ADOFAI Access] Level preview disabled.");
                 MenuNarration.Speak("Level preview off", interrupt: true);
+            }
+
+            if (restartLevel)
+            {
+                scrController controller = ADOBase.controller;
+                if (controller != null)
+                {
+                    controller.Restart();
+                }
             }
         }
 
@@ -413,9 +429,15 @@ namespace ADOFAI_Access
     [HarmonyPatch(typeof(scrController), "Won_Enter")]
     internal static class LevelPreviewWonPatch
     {
-        private static void Postfix()
+        private static bool Prefix()
         {
+            if (!LevelPreview.IsActive)
+            {
+                return true;
+            }
+
             LevelPreview.AnnouncePreviewComplete();
+            return false;
         }
     }
 }
