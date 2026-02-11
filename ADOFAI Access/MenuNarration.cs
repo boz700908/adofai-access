@@ -18,6 +18,7 @@ namespace ADOFAI_Access
         private static int _lastSelectedId = -1;
         private static string _lastSpoken = string.Empty;
         private static float _lastSpokenAt;
+        private static string _lastAnnouncedWorld = string.Empty;
 
         public static void Tick()
         {
@@ -145,6 +146,30 @@ namespace ADOFAI_Access
             _lastSpoken = normalized;
             _lastSpokenAt = now;
             Tolk.Output(normalized, interrupt);
+        }
+
+        public static void SpeakWorldSelection(string world)
+        {
+            string normalizedWorld = NormalizeText(world);
+            if (string.IsNullOrEmpty(normalizedWorld))
+            {
+                _lastAnnouncedWorld = string.Empty;
+                return;
+            }
+
+            if (normalizedWorld == "0")
+            {
+                _lastAnnouncedWorld = normalizedWorld;
+                return;
+            }
+
+            if (string.Equals(_lastAnnouncedWorld, normalizedWorld, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            _lastAnnouncedWorld = normalizedWorld;
+            Speak($"World {normalizedWorld}", interrupt: true);
         }
 
         private static bool TryDescribeSelected(GameObject selected, out string label, out string controlType, out string valueState)
@@ -454,6 +479,43 @@ namespace ADOFAI_Access
         private static void Postfix(PauseSettingButton setting, SettingsMenu.Interaction action)
         {
             MenuNarration.SpeakSettingValueChange(setting, action);
+        }
+    }
+
+    [HarmonyPatch(typeof(LevelSelectIsland), nameof(LevelSelectIsland.SelectWorld))]
+    internal static class LevelSelectWorldSelectionPatch
+    {
+        private static void Postfix(string world)
+        {
+            MenuNarration.SpeakWorldSelection(world);
+        }
+    }
+
+    [HarmonyPatch(typeof(scrPortal), nameof(scrPortal.ExpandPortal))]
+    internal static class PortalExpandPatch
+    {
+        private static void Postfix(scrPortal __instance, bool expand)
+        {
+            if (!expand || __instance == null)
+            {
+                return;
+            }
+
+            MenuNarration.SpeakWorldSelection(__instance.world);
+        }
+    }
+
+    [HarmonyPatch(typeof(scnLevelSelect), "Update")]
+    internal static class LevelSelectUpdateWorldTrackingPatch
+    {
+        private static void Postfix(scnLevelSelect __instance)
+        {
+            if (__instance == null)
+            {
+                return;
+            }
+
+            MenuNarration.SpeakWorldSelection(__instance.lastVisitedWorld);
         }
     }
 }
