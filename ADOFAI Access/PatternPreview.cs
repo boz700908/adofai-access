@@ -262,11 +262,83 @@ namespace ADOFAI_Access
             if (phase == 0)
             {
                 RDC.auto = true;
-                TryScheduleNextBarCues();
+                TryScheduleListenRepeatGroupCues(conductor, groupIndex, beatsPerGroup);
                 return;
             }
 
             RDC.auto = false;
+        }
+
+        private static void TryScheduleListenRepeatGroupCues(scrConductor conductor, int listenGroupIndex, int beatsPerGroup)
+        {
+            scrLevelMaker levelMaker = ADOBase.lm;
+            if (conductor == null || levelMaker == null || levelMaker.listFloors == null || beatsPerGroup <= 0)
+            {
+                return;
+            }
+
+            List<scrFloor> floors = levelMaker.listFloors;
+            int repeatGroupIndex = listenGroupIndex + 1;
+            double listenStartBeat = listenGroupIndex * (double)beatsPerGroup;
+            double repeatStartBeat = repeatGroupIndex * (double)beatsPerGroup;
+            double repeatEndBeat = repeatStartBeat + beatsPerGroup;
+
+            if (!TryGetEntryTimePitchAdjustedForBeat(floors, listenStartBeat, out double listenStartTime))
+            {
+                return;
+            }
+
+            if (!TryGetEntryTimePitchAdjustedForBeat(floors, repeatStartBeat, out double repeatStartTime))
+            {
+                return;
+            }
+
+            // Shift the upcoming repeat group back to the listen group's start.
+            // This preserves the repeat group's internal timing through tempo changes.
+            double groupTimeShift = repeatStartTime - listenStartTime;
+            double nowDsp = conductor.dspTime;
+
+            for (int i = 0; i < floors.Count; i++)
+            {
+                scrFloor floor = floors[i];
+                if (floor == null || floor.auto)
+                {
+                    continue;
+                }
+
+                if (HandledSeqIds.Contains(floor.seqID))
+                {
+                    continue;
+                }
+
+                if (floor.entryBeat < repeatStartBeat || floor.entryBeat >= repeatEndBeat)
+                {
+                    continue;
+                }
+
+                double previewDueDsp = conductor.dspTimeSongPosZero + floor.entryTimePitchAdj - groupTimeShift;
+                double untilPreview = previewDueDsp - nowDsp;
+                if (untilPreview < -CueLateGraceSeconds)
+                {
+                    HandledSeqIds.Add(floor.seqID);
+                    continue;
+                }
+
+                if (untilPreview > CueScheduleHorizonSeconds)
+                {
+                    continue;
+                }
+
+                HandledSeqIds.Add(floor.seqID);
+                if (untilPreview >= 0.0)
+                {
+                    TapCueService.PlayCueAt(previewDueDsp);
+                }
+                else
+                {
+                    TapCueService.PlayCueNow();
+                }
+            }
         }
 
         private static bool IsGameplayRuntimeAvailable()
