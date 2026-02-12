@@ -16,6 +16,8 @@ namespace ADOFAI_Access
         private static bool _restoreResponsive;
         private static int _selectedIndex;
         private static bool _openHintSpoken;
+        public static bool IsOpen => _isOpen;
+        public static void CloseFromExternal(bool speak = false) => Close(speak);
 
         private sealed class MenuEntry
         {
@@ -114,6 +116,11 @@ namespace ADOFAI_Access
 
         private static void Open()
         {
+            if (AccessSettingsMenu.IsOpen)
+            {
+                AccessSettingsMenu.CloseFromExternal(speak: false);
+            }
+
             BuildEntries();
             if (Entries.Count == 0)
             {

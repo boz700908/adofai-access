@@ -12,6 +12,7 @@ namespace ADOFAI_Access
 {
     internal static class MenuNarration
     {
+        private const KeyCode NarrationToggleKey = KeyCode.F4;
         private static readonly Regex RichTextRegex = new Regex("<.*?>", RegexOptions.Compiled);
         private static readonly Regex WhitespaceRegex = new Regex("\\s+", RegexOptions.Compiled);
 
@@ -25,6 +26,8 @@ namespace ADOFAI_Access
 
         public static void Tick()
         {
+            HandleNarrationToggleHotkey();
+
             if (AccessSettingsMenu.IsOpen)
             {
                 _lastSelectedId = -1;
@@ -165,6 +168,19 @@ namespace ADOFAI_Access
 
             _lastSpoken = normalized;
             _lastSpokenAt = now;
+            Tolk.Output(normalized, interrupt);
+        }
+
+        public static void SpeakForced(string text, bool interrupt)
+        {
+            string normalized = NormalizeText(text);
+            if (string.IsNullOrEmpty(normalized))
+            {
+                return;
+            }
+
+            _lastSpoken = normalized;
+            _lastSpokenAt = Time.unscaledTime;
             Tolk.Output(normalized, interrupt);
         }
 
@@ -496,6 +512,27 @@ namespace ADOFAI_Access
 
             string stripped = RichTextRegex.Replace(text, string.Empty).Trim();
             return WhitespaceRegex.Replace(stripped, " ");
+        }
+
+        private static void HandleNarrationToggleHotkey()
+        {
+            if (!Input.GetKeyDown(NarrationToggleKey))
+            {
+                return;
+            }
+
+            ModSettings.Current.menuNarrationEnabled = !ModSettings.Current.menuNarrationEnabled;
+            ModSettings.Save();
+
+            if (ModSettings.Current.menuNarrationEnabled)
+            {
+                SpeakForced("Menu narration on", interrupt: true);
+            }
+            else
+            {
+                _lastSelectedId = -1;
+                SpeakForced("Menu narration off. You can always turn menu narration back on with F4.", interrupt: true);
+            }
         }
     }
 

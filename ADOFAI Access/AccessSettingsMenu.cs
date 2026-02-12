@@ -1,4 +1,5 @@
 using UnityEngine;
+using DavyKager;
 
 namespace ADOFAI_Access
 {
@@ -12,6 +13,7 @@ namespace ADOFAI_Access
         private static bool _wasPausedBeforeOpen;
 
         public static bool IsOpen => _open;
+        public static void CloseFromExternal(bool speak = false) => Close(speak);
 
         public static void Tick()
         {
@@ -73,6 +75,11 @@ namespace ADOFAI_Access
 
         private static void Open()
         {
+            if (AccessibleLevelSelectMenu.IsOpen)
+            {
+                AccessibleLevelSelectMenu.CloseFromExternal(speak: false);
+            }
+
             _open = true;
             _selectedIndex = 0;
 
@@ -97,7 +104,7 @@ namespace ADOFAI_Access
             SpeakCurrentOption();
         }
 
-        private static void Close()
+        private static void Close(bool speak = true)
         {
             _open = false;
 
@@ -114,7 +121,10 @@ namespace ADOFAI_Access
 
             _restoreResponsive = false;
             _wasPausedBeforeOpen = false;
-            MenuNarration.Speak("ADOFAI Access settings closed", interrupt: true);
+            if (speak)
+            {
+                MenuNarration.Speak("ADOFAI Access settings closed", interrupt: true);
+            }
         }
 
         private static void ChangeCurrentOption(int delta)
@@ -142,7 +152,14 @@ namespace ADOFAI_Access
             }
 
             ModSettings.Save();
-            SpeakCurrentOption();
+            if (_selectedIndex == 0 && !settings.menuNarrationEnabled)
+            {
+                SpeakAlways("Menu narration off. You can always turn menu narration back on with F4.", true);
+            }
+            else
+            {
+                SpeakCurrentValue();
+            }
         }
 
         private static void ToggleCurrentOption()
@@ -162,7 +179,14 @@ namespace ADOFAI_Access
             }
 
             ModSettings.Save();
-            SpeakCurrentOption();
+            if (_selectedIndex == 0 && !settings.menuNarrationEnabled)
+            {
+                SpeakAlways("Menu narration off. You can always turn menu narration back on with F4.", true);
+            }
+            else
+            {
+                SpeakCurrentValue();
+            }
         }
 
         private static void SpeakCurrentOption()
@@ -179,6 +203,40 @@ namespace ADOFAI_Access
                 case 2:
                     MenuNarration.Speak($"Pattern preview beats ahead, {settings.patternPreviewBeatsAhead}, setting, 3 of 3", interrupt: true);
                     break;
+            }
+        }
+
+        private static void SpeakCurrentValue()
+        {
+            ModSettingsData settings = ModSettings.Current;
+            switch (_selectedIndex)
+            {
+                case 0:
+                    SpeakAlways(settings.menuNarrationEnabled ? "on" : "off", true);
+                    break;
+                case 1:
+                    SpeakAlways(PatternPreview.GetModeLabel(settings.playMode), true);
+                    break;
+                case 2:
+                    SpeakAlways(settings.patternPreviewBeatsAhead.ToString(), true);
+                    break;
+            }
+        }
+
+        private static void SpeakAlways(string text, bool interrupt)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return;
+            }
+
+            if (ModSettings.Current.menuNarrationEnabled)
+            {
+                MenuNarration.Speak(text, interrupt);
+            }
+            else
+            {
+                Tolk.Output(text, interrupt);
             }
         }
     }
