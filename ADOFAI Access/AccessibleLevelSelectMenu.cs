@@ -15,9 +15,18 @@ namespace ADOFAI_Access
         private static bool _isOpen;
         private static bool _restoreResponsive;
         private static int _selectedIndex;
-        private static bool _openHintSpoken;
+        private static bool _openHintSpokenLevelSelect;
+        private static bool _openHintSpokenClsInitial;
+        private static MenuContext _openContext;
         public static bool IsOpen => _isOpen;
         public static void CloseFromExternal(bool speak = false) => Close(speak);
+
+        private enum MenuContext
+        {
+            None = 0,
+            LevelSelect = 1,
+            CustomLevelsInitial = 2
+        }
 
         private sealed class MenuEntry
         {
@@ -33,10 +42,11 @@ namespace ADOFAI_Access
                 return;
             }
 
-            bool inLevelSelect = ADOBase.sceneName == GCNS.sceneLevelSelect && ADOBase.levelSelect is scnLevelSelect;
-            if (!inLevelSelect)
+            MenuContext context = GetCurrentContext();
+            if (context == MenuContext.None)
             {
-                _openHintSpoken = false;
+                _openHintSpokenLevelSelect = false;
+                _openHintSpokenClsInitial = false;
 
                 if (_isOpen)
                 {
@@ -46,9 +56,14 @@ namespace ADOFAI_Access
                 return;
             }
 
-            if (!_openHintSpoken)
+            if (context == MenuContext.LevelSelect && !_openHintSpokenLevelSelect)
             {
-                _openHintSpoken = true;
+                _openHintSpokenLevelSelect = true;
+                MenuNarration.Speak("Press F6 to open accessible menu", interrupt: true);
+            }
+            else if (context == MenuContext.CustomLevelsInitial && !_openHintSpokenClsInitial)
+            {
+                _openHintSpokenClsInitial = true;
                 MenuNarration.Speak("Press F6 to open accessible menu", interrupt: true);
             }
 
@@ -122,7 +137,8 @@ namespace ADOFAI_Access
                 AccessSettingsMenu.CloseFromExternal(speak: false);
             }
 
-            BuildEntries();
+            MenuContext context = GetCurrentContext();
+            BuildEntries(context);
             if (Entries.Count == 0)
             {
                 MenuNarration.Speak("Accessible menu unavailable here", interrupt: true);
@@ -130,6 +146,7 @@ namespace ADOFAI_Access
             }
 
             _isOpen = true;
+            _openContext = context;
             _selectedIndex = 0;
 
             scrController controller = ADOBase.controller;
@@ -151,6 +168,7 @@ namespace ADOFAI_Access
         {
             _isOpen = false;
             Entries.Clear();
+            _openContext = MenuContext.None;
 
             scrController controller = ADOBase.controller;
             if (controller != null)
@@ -215,10 +233,21 @@ namespace ADOFAI_Access
             selected.Execute?.Invoke();
         }
 
-        private static void BuildEntries()
+        private static void BuildEntries(MenuContext context)
         {
             Entries.Clear();
+            if (context == MenuContext.LevelSelect)
+            {
+                BuildLevelSelectEntries();
+            }
+            else if (context == MenuContext.CustomLevelsInitial)
+            {
+                BuildCustomLevelsInitialEntries();
+            }
+        }
 
+        private static void BuildLevelSelectEntries()
+        {
             AddEntry("Open settings", () =>
             {
                 Close(speak: false);
@@ -305,6 +334,68 @@ namespace ADOFAI_Access
                     ADOBase.controller?.EnterWorld(targetWorld);
                 }, locked);
             }
+        }
+
+        private static void BuildCustomLevelsInitialEntries()
+        {
+            AddEntry("Open workshop levels", () =>
+            {
+                Close(speak: false);
+                scnCLS cls = ADOBase.cls;
+                if (cls != null)
+                {
+                    MenuNarration.Speak("Opening workshop levels", interrupt: true);
+                    cls.WorkshopLevelsPortal();
+                }
+            });
+
+            AddEntry("Open featured levels", () =>
+            {
+                Close(speak: false);
+                scnCLS cls = ADOBase.cls;
+                if (cls != null)
+                {
+                    MenuNarration.Speak("Opening featured levels", interrupt: true);
+                    cls.FeaturedLevelsPortal();
+                }
+            });
+
+            AddEntry("Open tech featured levels", () =>
+            {
+                Close(speak: false);
+                scnCLS cls = ADOBase.cls;
+                if (cls != null)
+                {
+                    MenuNarration.Speak("Opening tech featured levels", interrupt: true);
+                    cls.TechFeaturedLevelsPortal();
+                }
+            });
+
+            AddEntry("Quit to main menu", () =>
+            {
+                Close(speak: false);
+                scnCLS cls = ADOBase.cls;
+                if (cls != null)
+                {
+                    MenuNarration.Speak("Quitting to main menu", interrupt: true);
+                    cls.QuitPortal();
+                }
+            });
+        }
+
+        private static MenuContext GetCurrentContext()
+        {
+            if (ADOBase.sceneName == GCNS.sceneLevelSelect && ADOBase.levelSelect is scnLevelSelect)
+            {
+                return MenuContext.LevelSelect;
+            }
+
+            if (ADOBase.sceneName == GCNS.sceneCustomLevelSelect && ADOBase.cls != null && ADOBase.cls.showingInitialMenu)
+            {
+                return MenuContext.CustomLevelsInitial;
+            }
+
+            return MenuContext.None;
         }
 
         private static bool IsWorldReachableByProgress(string world)
