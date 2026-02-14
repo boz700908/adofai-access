@@ -2,6 +2,7 @@ using DavyKager;
 using HarmonyLib;
 using MelonLoader;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -12,6 +13,11 @@ namespace ADOFAI_Access
 {
     public class Core : MelonMod
     {
+        private static readonly string ModVersion = typeof(Core).Assembly
+            .GetCustomAttributes(typeof(MelonInfoAttribute), inherit: false)
+            .OfType<MelonInfoAttribute>()
+            .FirstOrDefault()?.Version ?? "unknown";
+
         public override void OnInitializeMelon()
         {
             ModSettings.EnsureLoaded();
@@ -24,7 +30,7 @@ namespace ADOFAI_Access
         {
             if (ModSettings.Current.menuNarrationEnabled)
             {
-                Tolk.Output("ADOFAI Access loaded");
+                Tolk.Output($"ADOFAI Access loaded, version {ModVersion}");
             }
         }
 
