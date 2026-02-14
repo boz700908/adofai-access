@@ -816,6 +816,11 @@ namespace ADOFAI_Access
             }
 
             string levelToken = GetLevelToken(levelButton.levelName);
+            if (!string.IsNullOrWhiteSpace(restart) && !string.IsNullOrWhiteSpace(levelToken))
+            {
+                return restart + ", " + levelToken;
+            }
+
             return BestOf(restart, levelToken, levelButton.label != null ? levelButton.label.text : null, levelButton.levelName, levelButton.name);
         }
 
@@ -834,6 +839,39 @@ namespace ADOFAI_Access
             }
 
             return normalized.Substring(dash + 1);
+        }
+
+        internal static string BuildCurrentLevelPhrase()
+        {
+            scrController controller = ADOBase.controller;
+            if (controller == null)
+            {
+                return string.Empty;
+            }
+
+            string levelId = NormalizeText(controller.levelName);
+            string caption = NormalizeText(controller.caption);
+            if (string.IsNullOrWhiteSpace(caption) && !string.IsNullOrWhiteSpace(levelId))
+            {
+                caption = NormalizeText(ADOBase.GetLocalizedLevelName(levelId));
+            }
+
+            if (string.IsNullOrWhiteSpace(caption))
+            {
+                return levelId;
+            }
+
+            if (!string.IsNullOrWhiteSpace(levelId) && caption.StartsWith(levelId + " ", StringComparison.OrdinalIgnoreCase))
+            {
+                return caption;
+            }
+
+            if (!string.IsNullOrWhiteSpace(levelId))
+            {
+                return levelId + " " + caption;
+            }
+
+            return caption;
         }
 
         private static string FindTextOnObject(GameObject gameObject)
@@ -1151,7 +1189,17 @@ namespace ADOFAI_Access
             }
 
             Text text = __instance.GetComponent<Text>();
-            MenuNarration.Speak(text != null ? text.text : RDString.Get(ADOBase.isMobile ? "status.tapToBegin" : "status.pressToBegin"), interrupt: true);
+            string prompt = text != null ? text.text : RDString.Get(ADOBase.isMobile ? "status.tapToBegin" : "status.pressToBegin");
+            string levelPhrase = MenuNarration.BuildCurrentLevelPhrase();
+            if (!string.IsNullOrWhiteSpace(levelPhrase))
+            {
+                MenuNarration.Speak(levelPhrase + ". " + prompt, interrupt: true);
+            }
+            else
+            {
+                MenuNarration.Speak(prompt, interrupt: true);
+            }
+
             MenuNarration.SpeakDifficultySelector(ADOBase.uiController);
         }
     }
