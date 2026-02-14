@@ -17,6 +17,7 @@ namespace ADOFAI_Access
             .GetCustomAttributes(typeof(MelonInfoAttribute), inherit: false)
             .OfType<MelonInfoAttribute>()
             .FirstOrDefault()?.Version ?? "unknown";
+        internal static string VersionString => ModVersion;
 
         public override void OnInitializeMelon()
         {

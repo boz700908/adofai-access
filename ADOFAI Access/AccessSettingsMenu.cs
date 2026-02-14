@@ -6,7 +6,7 @@ namespace ADOFAI_Access
     internal static class AccessSettingsMenu
     {
         private const KeyCode ToggleKey = KeyCode.F5;
-        private const int OptionCount = 5;
+        private const int OptionCount = 6;
 
         private static bool _open;
         private static int _selectedIndex;
@@ -157,6 +157,9 @@ namespace ADOFAI_Access
                 case 4:
                     settings.listenRepeatStartEndCueMode = GetNextCueMode(settings.listenRepeatStartEndCueMode, delta);
                     break;
+                case 5:
+                    SpeakCurrentValue();
+                    return;
             }
 
             ModSettings.Save();
@@ -190,6 +193,9 @@ namespace ADOFAI_Access
                 case 4:
                     settings.listenRepeatStartEndCueMode = GetNextCueMode(settings.listenRepeatStartEndCueMode, 1);
                     break;
+                case 5:
+                    SpeakCurrentValue();
+                    return;
             }
 
             ModSettings.Save();
@@ -209,19 +215,22 @@ namespace ADOFAI_Access
             switch (_selectedIndex)
             {
                 case 0:
-                    MenuNarration.Speak($"Menu narration, {(settings.menuNarrationEnabled ? "on" : "off")}, toggle, 1 of 5", interrupt: true);
+                    MenuNarration.Speak($"Menu narration, {(settings.menuNarrationEnabled ? "on" : "off")}, toggle, 1 of 6", interrupt: true);
                     break;
                 case 1:
-                    MenuNarration.Speak($"Play mode, {PatternPreview.GetModeLabel(settings.playMode)}, option, 2 of 5", interrupt: true);
+                    MenuNarration.Speak($"Play mode, {PatternPreview.GetModeLabel(settings.playMode)}, option, 2 of 6", interrupt: true);
                     break;
                 case 2:
-                    MenuNarration.Speak($"Pattern preview beats ahead, {settings.patternPreviewBeatsAhead}, setting, 3 of 5", interrupt: true);
+                    MenuNarration.Speak($"Pattern preview beats ahead, {settings.patternPreviewBeatsAhead}, setting, 3 of 6", interrupt: true);
                     break;
                 case 3:
-                    MenuNarration.Speak($"Listen-repeat ducking, {(settings.listenRepeatAudioDuckingEnabled ? "on" : "off")}, toggle, 4 of 5", interrupt: true);
+                    MenuNarration.Speak($"Listen-repeat ducking, {(settings.listenRepeatAudioDuckingEnabled ? "on" : "off")}, toggle, 4 of 6", interrupt: true);
                     break;
                 case 4:
-                    MenuNarration.Speak($"Listen-repeat start/end cue, {GetCueModeLabel(settings.listenRepeatStartEndCueMode)}, option, 5 of 5", interrupt: true);
+                    MenuNarration.Speak($"Listen-repeat start/end cue, {GetCueModeLabel(settings.listenRepeatStartEndCueMode)}, option, 5 of 6", interrupt: true);
+                    break;
+                case 5:
+                    MenuNarration.Speak($"ADOFAI Access version, {Core.VersionString}, button, 6 of 6", interrupt: true);
                     break;
             }
         }
@@ -245,6 +254,9 @@ namespace ADOFAI_Access
                     break;
                 case 4:
                     SpeakAlways(GetCueModeLabel(settings.listenRepeatStartEndCueMode), true);
+                    break;
+                case 5:
+                    SpeakAlways(Core.VersionString, true);
                     break;
             }
         }
