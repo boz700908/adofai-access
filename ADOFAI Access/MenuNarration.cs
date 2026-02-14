@@ -274,6 +274,34 @@ namespace ADOFAI_Access
             Speak("You died", interrupt: true);
         }
 
+        public static void SpeakCalibrationMessage(scrCalibrationPlanet calibration)
+        {
+            if (ADOBase.isLevelEditor || calibration == null)
+            {
+                return;
+            }
+
+            string text = calibration.txtMessage != null ? calibration.txtMessage.text : null;
+            Speak(BestOf(text, "Calibration"), interrupt: true);
+        }
+
+        public static void SpeakCalibrationResults(scrCalibrationPlanet calibration)
+        {
+            if (ADOBase.isLevelEditor || calibration == null)
+            {
+                return;
+            }
+
+            string results = calibration.txtResults != null ? calibration.txtResults.text : null;
+            if (!string.IsNullOrWhiteSpace(results))
+            {
+                Speak(results, interrupt: true);
+                return;
+            }
+
+            SpeakCalibrationMessage(calibration);
+        }
+
         private static bool TryDescribeSelected(GameObject selected, out string label, out string controlType, out string valueState)
         {
             label = string.Empty;
@@ -728,6 +756,39 @@ namespace ADOFAI_Access
 
             Text text = __instance.GetComponent<Text>();
             MenuNarration.Speak(text != null ? text.text : RDString.Get(ADOBase.isMobile ? "status.tapToBegin" : "status.pressToBegin"), interrupt: true);
+        }
+    }
+
+    [HarmonyPatch(typeof(scrCalibrationPlanet), "Start")]
+    internal static class CalibrationStartPatch
+    {
+        private static void Postfix(scrCalibrationPlanet __instance)
+        {
+            if (!ModSettings.Current.menuNarrationEnabled)
+            {
+                return;
+            }
+
+            MenuNarration.Speak("Calibration", interrupt: true);
+            MenuNarration.SpeakCalibrationMessage(__instance);
+        }
+    }
+
+    [HarmonyPatch(typeof(scrCalibrationPlanet), "SetMessageNumber")]
+    internal static class CalibrationMessagePatch
+    {
+        private static void Postfix(scrCalibrationPlanet __instance)
+        {
+            MenuNarration.SpeakCalibrationMessage(__instance);
+        }
+    }
+
+    [HarmonyPatch(typeof(scrCalibrationPlanet), "PostSong")]
+    internal static class CalibrationPostSongPatch
+    {
+        private static void Postfix(scrCalibrationPlanet __instance)
+        {
+            MenuNarration.SpeakCalibrationResults(__instance);
         }
     }
 }
