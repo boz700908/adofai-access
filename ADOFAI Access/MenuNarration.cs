@@ -112,7 +112,10 @@ namespace ADOFAI_Access
             if (!_wasInClsScene)
             {
                 _wasInClsScene = true;
-                Speak("Custom levels", interrupt: true);
+                string intro = cls.showingInitialMenu
+                    ? "Custom levels"
+                    : "Custom levels browser. Up and down to browse levels. Left and right for panels. Press F6 for actions.";
+                Speak(intro, interrupt: true);
             }
 
             if (cls.optionsPanels != null)
@@ -154,7 +157,23 @@ namespace ADOFAI_Access
             _lastClsDisplayedTitle = title;
             string artist = cls.portalArtist != null ? NormalizeText(cls.portalArtist.text) : string.Empty;
             bool unavailable = cls.levelDeleted;
-            string valueState = unavailable ? "unavailable" : (string.IsNullOrEmpty(artist) ? string.Empty : "by " + artist);
+            bool notDownloaded = cls.downloadText != null && cls.downloadText.enabled;
+            bool downloading = cls.downloadingText != null && cls.downloadingText.enabled;
+            string availability = unavailable ? "unavailable" : (downloading ? "downloading" : (notDownloaded ? "not downloaded" : string.Empty));
+            string valueState;
+            if (!string.IsNullOrEmpty(artist) && !string.IsNullOrEmpty(availability))
+            {
+                valueState = "by " + artist + ", " + availability;
+            }
+            else if (!string.IsNullOrEmpty(artist))
+            {
+                valueState = "by " + artist;
+            }
+            else
+            {
+                valueState = availability;
+            }
+
             Speak(ComposePhrase(title, "level", valueState), interrupt: true);
         }
 
@@ -476,6 +495,38 @@ namespace ADOFAI_Access
 
             _lastLevelEndAt = now;
             Speak(BestOf(text, RDString.Get("status.congratulations"), "Level complete"), interrupt: true);
+        }
+
+        public static void SpeakDifficultySelector(scrUIController ui)
+        {
+            if (AccessSettingsMenu.IsOpen || !ModSettings.Current.menuNarrationEnabled || ADOBase.isLevelEditor || ui == null)
+            {
+                return;
+            }
+
+            if (ui.difficultyUIMode == DifficultyUIMode.DontShow)
+            {
+                return;
+            }
+
+            string difficulty = BestOf(ui.difficultyText != null ? ui.difficultyText.text : null, RDString.Get("enum.Difficulty." + GCS.difficulty));
+            Speak($"Difficulty {difficulty}. Left and right to change.", interrupt: true);
+        }
+
+        public static void SpeakDifficultyValue(scrUIController ui)
+        {
+            if (AccessSettingsMenu.IsOpen || !ModSettings.Current.menuNarrationEnabled || ADOBase.isLevelEditor || ui == null)
+            {
+                return;
+            }
+
+            if (ui.difficultyUIMode == DifficultyUIMode.DontShow)
+            {
+                return;
+            }
+
+            string difficulty = BestOf(ui.difficultyText != null ? ui.difficultyText.text : null, RDString.Get("enum.Difficulty." + GCS.difficulty));
+            Speak($"Difficulty {difficulty}", interrupt: true);
         }
 
         public static void SpeakDeath()
@@ -1056,7 +1107,7 @@ namespace ADOFAI_Access
     {
         private static void Postfix()
         {
-            if (ADOBase.isPlayingLevel)
+            if (ADOBase.isScnGame && ADOBase.isPlayingLevel)
             {
                 MenuNarration.SpeakLevelStart();
             }
@@ -1101,6 +1152,16 @@ namespace ADOFAI_Access
 
             Text text = __instance.GetComponent<Text>();
             MenuNarration.Speak(text != null ? text.text : RDString.Get(ADOBase.isMobile ? "status.tapToBegin" : "status.pressToBegin"), interrupt: true);
+            MenuNarration.SpeakDifficultySelector(ADOBase.uiController);
+        }
+    }
+
+    [HarmonyPatch(typeof(scrUIController), nameof(scrUIController.DifficultyArrowPressed))]
+    internal static class DifficultyArrowNarrationPatch
+    {
+        private static void Postfix(scrUIController __instance)
+        {
+            MenuNarration.SpeakDifficultyValue(__instance);
         }
     }
 
@@ -1142,6 +1203,12 @@ namespace ADOFAI_Access
     {
         private static void Postfix(scnCLS __instance, CustomLevelTile tileToSelect, bool snap)
         {
+            // CLS level selection is narrated by Tick-based fallback; avoid duplicate announcements.
+            if (ADOBase.sceneName == GCNS.sceneCustomLevelSelect && ADOBase.cls != null)
+            {
+                return;
+            }
+
             MenuNarration.SpeakCustomLevelSelection(__instance, tileToSelect);
         }
     }

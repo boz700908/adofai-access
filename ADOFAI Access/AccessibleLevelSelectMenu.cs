@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using ADOFAI;
 using UnityEngine;
 
 namespace ADOFAI_Access
@@ -17,7 +19,9 @@ namespace ADOFAI_Access
         private static int _selectedIndex;
         private static bool _openHintSpokenLevelSelect;
         private static bool _openHintSpokenClsInitial;
+        private static bool _openHintSpokenClsBrowse;
         private static MenuContext _openContext;
+        private static readonly FieldInfo ClsSelectedLevelKeyField = typeof(scnCLS).GetField("levelToSelect", BindingFlags.Instance | BindingFlags.NonPublic);
         public static bool IsOpen => _isOpen;
         public static void CloseFromExternal(bool speak = false) => Close(speak);
 
@@ -25,7 +29,8 @@ namespace ADOFAI_Access
         {
             None = 0,
             LevelSelect = 1,
-            CustomLevelsInitial = 2
+            CustomLevelsInitial = 2,
+            CustomLevelsBrowse = 3
         }
 
         private sealed class MenuEntry
@@ -47,6 +52,7 @@ namespace ADOFAI_Access
             {
                 _openHintSpokenLevelSelect = false;
                 _openHintSpokenClsInitial = false;
+                _openHintSpokenClsBrowse = false;
 
                 if (_isOpen)
                 {
@@ -65,6 +71,17 @@ namespace ADOFAI_Access
             {
                 _openHintSpokenClsInitial = true;
                 MenuNarration.Speak("Press F6 to open accessible menu", interrupt: true);
+            }
+            else if (context == MenuContext.CustomLevelsBrowse && !_openHintSpokenClsBrowse)
+            {
+                _openHintSpokenClsBrowse = true;
+                MenuNarration.Speak("Press F6 to open accessible menu", interrupt: true);
+            }
+
+            if (_isOpen && context != _openContext)
+            {
+                Close(speak: false);
+                return;
             }
 
             if (Input.GetKeyDown(ToggleKey))
@@ -244,6 +261,10 @@ namespace ADOFAI_Access
             {
                 BuildCustomLevelsInitialEntries();
             }
+            else if (context == MenuContext.CustomLevelsBrowse)
+            {
+                BuildCustomLevelsBrowseEntries();
+            }
         }
 
         private static void BuildLevelSelectEntries()
@@ -383,6 +404,176 @@ namespace ADOFAI_Access
             });
         }
 
+        private static void BuildCustomLevelsBrowseEntries()
+        {
+            AddEntry("Play selected", () =>
+            {
+                scnCLS cls = ADOBase.cls;
+                if (cls == null)
+                {
+                    MenuNarration.Speak("Unavailable", interrupt: true);
+                    return;
+                }
+
+                if (!TryGetSelectedCustomLevel(cls, out _, out _, out _))
+                {
+                    cls.SearchLevels(cls.searchParameter);
+                }
+
+                if (!TryGetSelectedCustomLevel(cls, out _, out GenericDataCLS selectedData, out bool deleted))
+                {
+                    MenuNarration.Speak("No level selected", interrupt: true);
+                    return;
+                }
+
+                if (deleted)
+                {
+                    MenuNarration.Speak("Selected level unavailable", interrupt: true);
+                    return;
+                }
+
+                bool notDownloaded = cls.downloadText != null && cls.downloadText.enabled;
+                string actionText = selectedData != null && selectedData.isFolder
+                    ? "Opening folder"
+                    : (notDownloaded ? "Not downloaded. Starting download." : "Starting level");
+                Close(speak: false);
+                MenuNarration.Speak(actionText, interrupt: true);
+                cls.EnterLevel();
+            });
+
+            AddEntry("Read level info", () =>
+            {
+                if (!TryGetSelectedCustomLevel(ADOBase.cls, out _, out GenericDataCLS selectedData, out _))
+                {
+                    MenuNarration.Speak("No level selected", interrupt: true);
+                    return;
+                }
+
+                string title = NormalizeForSpeech(selectedData.title);
+                string artist = NormalizeForSpeech(selectedData.artist);
+                string author = NormalizeForSpeech(selectedData.author);
+                string difficulty = selectedData.difficulty > 0 ? selectedData.difficulty.ToString() : "unknown";
+                MenuNarration.Speak($"Title {BestOf(title, "Unknown")}. Artist {BestOf(artist, "Unknown")}. Author {BestOf(author, "Unknown")}. Difficulty {difficulty}.", interrupt: true);
+            });
+
+            AddEntry("Read description", () =>
+            {
+                scnCLS cls = ADOBase.cls;
+                if (cls == null)
+                {
+                    return;
+                }
+
+                string description = NormalizeForSpeech(cls.portalDescription != null ? cls.portalDescription.text : string.Empty);
+                if (string.IsNullOrWhiteSpace(description))
+                {
+                    MenuNarration.Speak("No description", interrupt: true);
+                    return;
+                }
+
+                MenuNarration.Speak(description, interrupt: true);
+            });
+
+            AddEntry("Read stats", () =>
+            {
+                scnCLS cls = ADOBase.cls;
+                if (cls == null)
+                {
+                    return;
+                }
+
+                string stats = NormalizeForSpeech(cls.portalStats != null ? cls.portalStats.text : string.Empty);
+                if (string.IsNullOrWhiteSpace(stats))
+                {
+                    MenuNarration.Speak("No stats available", interrupt: true);
+                    return;
+                }
+
+                MenuNarration.Speak(stats, interrupt: true);
+            });
+
+            AddEntry("Read tags", () =>
+            {
+                if (!TryGetSelectedCustomLevel(ADOBase.cls, out _, out GenericDataCLS selectedData, out _))
+                {
+                    MenuNarration.Speak("No level selected", interrupt: true);
+                    return;
+                }
+
+                string[] tags = selectedData.tags ?? Array.Empty<string>();
+                string combined = string.Join(", ", tags.Where(t => !string.IsNullOrWhiteSpace(t)).Select(NormalizeForSpeech));
+                MenuNarration.Speak(string.IsNullOrWhiteSpace(combined) ? "No tags" : combined, interrupt: true);
+            });
+
+            AddEntry("Toggle speed trial", () =>
+            {
+                if (!TryToggleClsOption(OptionsPanelsCLS.OptionName.SpeedTrial, out bool enabled))
+                {
+                    MenuNarration.Speak("Unavailable", interrupt: true);
+                    return;
+                }
+
+                MenuNarration.Speak(enabled ? "Speed trial on" : "Speed trial off", interrupt: true);
+            });
+
+            AddEntry("Toggle no fail", () =>
+            {
+                if (!TryToggleClsOption(OptionsPanelsCLS.OptionName.NoFail, out bool enabled))
+                {
+                    MenuNarration.Speak("Unavailable", interrupt: true);
+                    return;
+                }
+
+                MenuNarration.Speak(enabled ? "No fail on" : "No fail off", interrupt: true);
+            });
+
+            AddEntry("Toggle unlock key limiter", () =>
+            {
+                if (!TryToggleClsOption(OptionsPanelsCLS.OptionName.UnlockKeyLimiter, out bool enabled))
+                {
+                    MenuNarration.Speak("Unavailable", interrupt: true);
+                    return;
+                }
+
+                MenuNarration.Speak(enabled ? "Unlock key limiter on" : "Unlock key limiter off", interrupt: true);
+            });
+
+            AddEntry("Sort by difficulty", () => ApplyClsSort(OptionsPanelsCLS.OptionName.Difficulty, "difficulty"));
+            AddEntry("Sort by last played", () => ApplyClsSort(OptionsPanelsCLS.OptionName.LastPlayed, "last played"));
+            AddEntry("Sort by song", () => ApplyClsSort(OptionsPanelsCLS.OptionName.Song, "song"));
+            AddEntry("Sort by artist", () => ApplyClsSort(OptionsPanelsCLS.OptionName.Artist, "artist"));
+            AddEntry("Sort by author", () => ApplyClsSort(OptionsPanelsCLS.OptionName.Author, "author"));
+
+            AddEntry("Find", () =>
+            {
+                scnCLS cls = ADOBase.cls;
+                if (cls == null || cls.optionsPanels == null)
+                {
+                    MenuNarration.Speak("Unavailable", interrupt: true);
+                    return;
+                }
+
+                cls.ToggleSearchMode(search: true);
+                string query = NormalizeForSpeech(cls.optionsPanels.searchInputField != null ? cls.optionsPanels.searchInputField.text : string.Empty);
+                string value = string.IsNullOrWhiteSpace(query) ? "empty" : query;
+                MenuNarration.Speak($"Find, text field, {value}", interrupt: true);
+            });
+
+            AddEntry("Clear search", () =>
+            {
+                scnCLS cls = ADOBase.cls;
+                if (cls == null || cls.optionsPanels == null || cls.optionsPanels.searchInputField == null)
+                {
+                    MenuNarration.Speak("Unavailable", interrupt: true);
+                    return;
+                }
+
+                cls.optionsPanels.searchInputField.text = string.Empty;
+                cls.SearchLevels(string.Empty);
+                MenuNarration.Speak("Search cleared", interrupt: true);
+            });
+        }
+
         private static MenuContext GetCurrentContext()
         {
             if (ADOBase.sceneName == GCNS.sceneLevelSelect && ADOBase.levelSelect is scnLevelSelect)
@@ -395,7 +586,91 @@ namespace ADOFAI_Access
                 return MenuContext.CustomLevelsInitial;
             }
 
+            if (ADOBase.sceneName == GCNS.sceneCustomLevelSelect && ADOBase.cls != null && !ADOBase.cls.showingInitialMenu)
+            {
+                return MenuContext.CustomLevelsBrowse;
+            }
+
             return MenuContext.None;
+        }
+
+        private static bool TryGetSelectedCustomLevel(scnCLS cls, out string levelKey, out GenericDataCLS selectedData, out bool deleted)
+        {
+            levelKey = null;
+            selectedData = null;
+            deleted = false;
+            if (cls == null)
+            {
+                return false;
+            }
+
+            levelKey = ClsSelectedLevelKeyField?.GetValue(cls) as string;
+            if (string.IsNullOrEmpty(levelKey) || cls.loadedLevels == null)
+            {
+                return false;
+            }
+
+            if (!cls.loadedLevels.TryGetValue(levelKey, out selectedData))
+            {
+                return false;
+            }
+
+            deleted = cls.levelDeleted;
+            return true;
+        }
+
+        private static void ApplyClsSort(OptionsPanelsCLS.OptionName optionName, string spokenName)
+        {
+            scnCLS cls = ADOBase.cls;
+            OptionsPanelsCLS panels = cls != null ? cls.optionsPanels : null;
+            if (cls == null || panels == null)
+            {
+                MenuNarration.Speak("Unavailable", interrupt: true);
+                return;
+            }
+
+            panels.sortingMethod = optionName;
+            cls.sortedLevelKeys = panels.SortedLevelKeys();
+            cls.SearchLevels(cls.searchParameter);
+            panels.UpdateOrderText();
+            MenuNarration.Speak("Sort by " + spokenName, interrupt: true);
+        }
+
+        private static bool TryToggleClsOption(OptionsPanelsCLS.OptionName optionName, out bool enabled)
+        {
+            enabled = false;
+            scnCLS cls = ADOBase.cls;
+            OptionsPanelsCLS panels = cls != null ? cls.optionsPanels : null;
+            if (panels == null || panels.rightPanelOptions == null)
+            {
+                return false;
+            }
+
+            OptionsPanelsCLS.Option option = panels.rightPanelOptions.FirstOrDefault(o => o != null && o.name == optionName);
+            if (option == null)
+            {
+                return false;
+            }
+
+            bool nextSelected = !option.selected;
+            option.SetState(_highlighted: option.highlighted, _selected: nextSelected);
+            enabled = option.selected;
+            return true;
+        }
+
+        private static string NormalizeForSpeech(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            return RDUtils.RemoveRichTags(value).Replace('\n', ' ').Replace('\r', ' ').Trim();
+        }
+
+        private static string BestOf(string primary, string fallback)
+        {
+            return string.IsNullOrWhiteSpace(primary) ? fallback : primary;
         }
 
         private static bool IsWorldReachableByProgress(string world)
