@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using DavyKager;
@@ -543,7 +544,20 @@ namespace ADOFAI_Access
             }
 
             _lastDeathAt = now;
-            Speak("You died", interrupt: true);
+            scrController controller = ADOBase.controller;
+            int pctComplete = 0;
+            if (controller != null && ADOBase.lm != null && ADOBase.lm.listFloors != null && ADOBase.lm.listFloors.Count > 0)
+            {
+                pctComplete = Mathf.FloorToInt(Mathf.Clamp01(controller.percentComplete) * 100f);
+            }
+
+            string completionText = RDString.Get("status.complete", new Dictionary<string, object> { { "pctComplete", pctComplete } });
+            if (string.IsNullOrWhiteSpace(completionText))
+            {
+                completionText = pctComplete + "% complete";
+            }
+
+            Speak(completionText, interrupt: true);
         }
 
         public static void SpeakCalibrationMessage(scrCalibrationPlanet calibration)
