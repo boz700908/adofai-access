@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using ADOFAI;
@@ -20,6 +21,7 @@ namespace ADOFAI_Access
         private static bool _openHintSpokenLevelSelect;
         private static bool _openHintSpokenClsInitial;
         private static bool _openHintSpokenClsBrowse;
+        private static bool _openHintSpokenGameplayStart;
         private static MenuContext _openContext;
         private static readonly FieldInfo ClsSelectedLevelKeyField = typeof(scnCLS).GetField("levelToSelect", BindingFlags.Instance | BindingFlags.NonPublic);
         public static bool IsOpen => _isOpen;
@@ -30,7 +32,8 @@ namespace ADOFAI_Access
             None = 0,
             LevelSelect = 1,
             CustomLevelsInitial = 2,
-            CustomLevelsBrowse = 3
+            CustomLevelsBrowse = 3,
+            GameplayPressStart = 4
         }
 
         private sealed class MenuEntry
@@ -53,6 +56,7 @@ namespace ADOFAI_Access
                 _openHintSpokenLevelSelect = false;
                 _openHintSpokenClsInitial = false;
                 _openHintSpokenClsBrowse = false;
+                _openHintSpokenGameplayStart = false;
 
                 if (_isOpen)
                 {
@@ -75,6 +79,11 @@ namespace ADOFAI_Access
             else if (context == MenuContext.CustomLevelsBrowse && !_openHintSpokenClsBrowse)
             {
                 _openHintSpokenClsBrowse = true;
+                MenuNarration.Speak("Press F6 to open accessible menu", interrupt: true);
+            }
+            else if (context == MenuContext.GameplayPressStart && !_openHintSpokenGameplayStart)
+            {
+                _openHintSpokenGameplayStart = true;
                 MenuNarration.Speak("Press F6 to open accessible menu", interrupt: true);
             }
 
@@ -264,6 +273,10 @@ namespace ADOFAI_Access
             else if (context == MenuContext.CustomLevelsBrowse)
             {
                 BuildCustomLevelsBrowseEntries();
+            }
+            else if (context == MenuContext.GameplayPressStart)
+            {
+                BuildGameplayPressStartEntries();
             }
         }
 
@@ -574,11 +587,136 @@ namespace ADOFAI_Access
             });
         }
 
+        private static void BuildGameplayPressStartEntries()
+        {
+            scrController controller = ADOBase.controller;
+            scnGame scene = ADOBase.customLevel;
+            bool hasLevelData = scene != null && scene.levelData != null;
+            if (controller == null)
+            {
+                AddEntry("Read level stats", () => MenuNarration.Speak("Level stats unavailable", interrupt: true), locked: true);
+                return;
+            }
+
+            string levelName = BestOf(controller.levelName, BestOf(ADOBase.currentLevel, GCS.internalLevelName));
+            string localizedTitle = !string.IsNullOrWhiteSpace(levelName) ? NormalizeForSpeech(ADOBase.GetLocalizedLevelName(levelName)) : string.Empty;
+            string artist = hasLevelData ? NormalizeForSpeech(scene.levelData.artist) : string.Empty;
+            string song = hasLevelData ? NormalizeForSpeech(scene.levelData.song) : string.Empty;
+            string author = hasLevelData ? NormalizeForSpeech(scene.levelData.author) : string.Empty;
+            string hash = hasLevelData ? scene.levelData.Hash : string.Empty;
+            string worldKey = scrController.currentWorldString;
+            bool hasOfficialWorld = ADOBase.isOfficialLevel && !string.IsNullOrWhiteSpace(worldKey) && GCNS.worldData.ContainsKey(worldKey);
+            bool hasCustomStats = !ADOBase.isOfficialLevel && !string.IsNullOrWhiteSpace(hash);
+
+            AddEntry("Read level name", () =>
+            {
+                string idPart = string.IsNullOrWhiteSpace(levelName) ? string.Empty : levelName;
+                string titlePart = string.IsNullOrWhiteSpace(localizedTitle) ? string.Empty : localizedTitle;
+                string text = string.IsNullOrWhiteSpace(titlePart) || string.Equals(titlePart, idPart, StringComparison.OrdinalIgnoreCase)
+                    ? $"Level {BestOf(idPart, "unknown")}."
+                    : $"Level {BestOf(idPart, "unknown")}. {titlePart}.";
+                MenuNarration.Speak(text, interrupt: true);
+            });
+
+            if (hasLevelData && (!string.IsNullOrWhiteSpace(song) || !string.IsNullOrWhiteSpace(artist) || !string.IsNullOrWhiteSpace(author)))
+            {
+                AddEntry("Read song info", () =>
+                {
+                    string artistPart = string.IsNullOrWhiteSpace(artist) ? "Unknown" : artist;
+                    string songPart = string.IsNullOrWhiteSpace(song) ? "Unknown" : song;
+                    string authorPart = string.IsNullOrWhiteSpace(author) ? "Unknown" : author;
+                    MenuNarration.Speak($"Song {songPart}. Artist {artistPart}. Author {authorPart}.", interrupt: true);
+                });
+            }
+
+            AddEntry("Read selected difficulty", () =>
+            {
+                string difficulty = RDString.Get("enum.Difficulty." + GCS.difficulty);
+                if (string.IsNullOrWhiteSpace(difficulty))
+                {
+                    difficulty = GCS.difficulty.ToString();
+                }
+
+                MenuNarration.Speak("Difficulty " + NormalizeForSpeech(difficulty), interrupt: true);
+            });
+
+            if (hasOfficialWorld)
+            {
+                int worldIndex = scrController.currentWorld;
+                float completion = Persistence.GetPercentCompletion(worldIndex);
+                float bestAcc = Persistence.GetBestPercentAccuracy(worldIndex);
+                float bestXAcc = Persistence.GetBestPercentXAccuracy(worldIndex);
+                float bestSpeed = Persistence.GetBestSpeedMultiplier(worldIndex);
+
+                AddEntry("Read best record summary", () =>
+                {
+                    List<string> parts = new List<string>
+                    {
+                        "Completion " + FormatPercentStat(completion),
+                        "Accuracy " + FormatPercentStat(bestAcc),
+                        "X accuracy " + FormatPercentStat(bestXAcc)
+                    };
+
+                    string speedText = FormatSpeedTrialStat(bestSpeed);
+                    if (!string.Equals(speedText, "none recorded", StringComparison.OrdinalIgnoreCase))
+                    {
+                        parts.Add("Speed Trial " + speedText);
+                    }
+
+                    MenuNarration.Speak(string.Join(". ", parts) + ".", interrupt: true);
+                });
+                AddEntry("Read completion", () => SpeakNamedStat("Completion", FormatPercentStat(Persistence.GetPercentCompletion(worldIndex))));
+                AddEntry("Read best accuracy", () => SpeakNamedStat("Best accuracy", FormatPercentStat(Persistence.GetBestPercentAccuracy(worldIndex))));
+                AddEntry("Read best X accuracy", () => SpeakNamedStat("Best X accuracy", FormatPercentStat(Persistence.GetBestPercentXAccuracy(worldIndex))));
+                AddEntry("Read best speed trial", () => SpeakNamedStat("Best speed trial", FormatSpeedTrialStat(Persistence.GetBestSpeedMultiplier(worldIndex))));
+                return;
+            }
+
+            if (hasCustomStats)
+            {
+                string customHash = hash;
+                float completion = Persistence.GetCustomWorldCompletion(customHash);
+                float bestAcc = Persistence.GetCustomWorldAccuracy(customHash);
+                float bestXAcc = Persistence.GetCustomWorldXAccuracy(customHash);
+                float bestSpeed = Persistence.GetCustomWorldSpeedTrial(customHash);
+
+                AddEntry("Read best record summary", () =>
+                {
+                    List<string> parts = new List<string>
+                    {
+                        "Completion " + FormatPercentStat(completion),
+                        "Accuracy " + FormatPercentStat(bestAcc),
+                        "X accuracy " + FormatPercentStat(bestXAcc)
+                    };
+
+                    string speedText = FormatSpeedTrialStat(bestSpeed);
+                    if (!string.Equals(speedText, "none recorded", StringComparison.OrdinalIgnoreCase))
+                    {
+                        parts.Add("Speed Trial " + speedText);
+                    }
+
+                    MenuNarration.Speak(string.Join(". ", parts) + ".", interrupt: true);
+                });
+                AddEntry("Read completion", () => SpeakNamedStat("Completion", FormatPercentStat(Persistence.GetCustomWorldCompletion(customHash))));
+                AddEntry("Read best accuracy", () => SpeakNamedStat("Best accuracy", FormatPercentStat(Persistence.GetCustomWorldAccuracy(customHash))));
+                AddEntry("Read best X accuracy", () => SpeakNamedStat("Best X accuracy", FormatPercentStat(Persistence.GetCustomWorldXAccuracy(customHash))));
+                AddEntry("Read best speed trial", () => SpeakNamedStat("Best speed trial", FormatSpeedTrialStat(Persistence.GetCustomWorldSpeedTrial(customHash))));
+                return;
+            }
+
+            AddEntry("Read best record summary", () => MenuNarration.Speak("No saved records yet", interrupt: true));
+        }
+
         private static MenuContext GetCurrentContext()
         {
             if (ADOBase.sceneName == GCNS.sceneLevelSelect && ADOBase.levelSelect is scnLevelSelect)
             {
                 return MenuContext.LevelSelect;
+            }
+
+            if (IsGameplayPressStartContext())
+            {
+                return MenuContext.GameplayPressStart;
             }
 
             if (ADOBase.sceneName == GCNS.sceneCustomLevelSelect && ADOBase.cls != null && ADOBase.cls.showingInitialMenu)
@@ -592,6 +730,34 @@ namespace ADOFAI_Access
             }
 
             return MenuContext.None;
+        }
+
+        private static bool IsGameplayPressStartContext()
+        {
+            scrController controller = ADOBase.controller;
+            if (controller == null || ADOBase.isLevelEditor)
+            {
+                return false;
+            }
+
+            if (ADOBase.sceneName == GCNS.sceneCustomLevelSelect || ADOBase.cls != null)
+            {
+                return false;
+            }
+
+            bool gameplayLikeScene = ADOBase.sceneName == GCNS.sceneGame || ADOBase.isScnGame || ADOBase.isPlayingLevel || controller.gameworld || controller.isPuzzleRoom;
+            if (!gameplayLikeScene || controller.state != States.Start)
+            {
+                return false;
+            }
+
+            scrUIController ui = ADOBase.uiController;
+            if (ui == null || ui.txtPressToStart == null || ui.txtPressToStart.gameObject == null || !ui.txtPressToStart.gameObject.activeInHierarchy)
+            {
+                return false;
+            }
+
+            return !string.IsNullOrWhiteSpace(ui.txtPressToStart.text);
         }
 
         private static bool TryGetSelectedCustomLevel(scnCLS cls, out string levelKey, out GenericDataCLS selectedData, out bool deleted)
@@ -656,6 +822,48 @@ namespace ADOFAI_Access
             option.SetState(_highlighted: option.highlighted, _selected: nextSelected);
             enabled = option.selected;
             return true;
+        }
+
+        private static void SpeakNamedStat(string label, string value)
+        {
+            string normalizedLabel = NormalizeForSpeech(label);
+            string normalizedValue = NormalizeForSpeech(value);
+            if (string.IsNullOrWhiteSpace(normalizedLabel))
+            {
+                normalizedLabel = "Stat";
+            }
+
+            if (string.IsNullOrWhiteSpace(normalizedValue))
+            {
+                normalizedValue = "unavailable";
+            }
+
+            MenuNarration.Speak($"{normalizedLabel}: {normalizedValue}", interrupt: true);
+        }
+
+        private static string FormatPercentStat(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+            {
+                return "unavailable";
+            }
+
+            return (value * 100f).ToString("0.##", CultureInfo.InvariantCulture) + " percent";
+        }
+
+        private static string FormatSpeedTrialStat(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+            {
+                return "unavailable";
+            }
+
+            if (value <= 0f)
+            {
+                return "none recorded";
+            }
+
+            return value.ToString("0.##", CultureInfo.InvariantCulture) + " x";
         }
 
         private static string NormalizeForSpeech(string value)
