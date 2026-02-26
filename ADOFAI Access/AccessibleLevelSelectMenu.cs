@@ -608,6 +608,44 @@ namespace ADOFAI_Access
             bool hasOfficialWorld = ADOBase.isOfficialLevel && !string.IsNullOrWhiteSpace(worldKey) && GCNS.worldData.ContainsKey(worldKey);
             bool hasCustomStats = !ADOBase.isOfficialLevel && !string.IsNullOrWhiteSpace(hash);
 
+            AddEntry("Toggle speed trial", () =>
+            {
+                bool enable = !GCS.speedTrialMode;
+
+                // For official levels on press-to-start, re-entering the same level
+                // is required to switch between normal and speed-trial variants.
+                if (ADOBase.isOfficialLevel && controller != null && !string.IsNullOrWhiteSpace(controller.levelName))
+                {
+                    Close(speak: false);
+                    MenuNarration.Speak(enable ? "Switching to speed trial" : "Switching to normal level", interrupt: true);
+                    controller.EnterLevel(controller.levelName, speedTrial: enable);
+                    return;
+                }
+
+                // Fallback path for non-official contexts where EnterLevel routing
+                // is not appropriate.
+                GCS.speedTrialMode = enable;
+                if (enable)
+                {
+                    if (GCS.nextSpeedRun < 1.1f)
+                    {
+                        GCS.nextSpeedRun = 1.1f;
+                    }
+
+                    if (GCS.currentSpeedTrial < 1f)
+                    {
+                        GCS.currentSpeedTrial = 1f;
+                    }
+                }
+                else
+                {
+                    GCS.currentSpeedTrial = 1f;
+                    GCS.nextSpeedRun = 1f;
+                }
+
+                MenuNarration.Speak(enable ? "Speed trial on" : "Speed trial off", interrupt: true);
+            });
+
             AddEntry("Read level name", () =>
             {
                 string idPart = string.IsNullOrWhiteSpace(levelName) ? string.Empty : levelName;
