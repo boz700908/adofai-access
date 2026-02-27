@@ -602,6 +602,23 @@ namespace ADOFAI_Access
             SpeakCalibrationMessage(calibration);
         }
 
+        public static void SpeakCutsceneDialogue(TaroCutsceneScript cutscene)
+        {
+            if (AccessSettingsMenu.IsOpen || !ModSettings.Current.menuNarrationEnabled || ADOBase.isLevelEditor || cutscene == null)
+            {
+                return;
+            }
+
+            string text = cutscene.scene_text != null ? cutscene.scene_text.text : null;
+            text = NormalizeText(text);
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return;
+            }
+
+            Speak(text, interrupt: true);
+        }
+
         public static void SpeakCustomLevelSelection(scnCLS scene, CustomLevelTile tile)
         {
             if (AccessSettingsMenu.IsOpen || !ModSettings.Current.menuNarrationEnabled || ADOBase.isLevelEditor || scene == null || tile == null)
@@ -1515,6 +1532,15 @@ namespace ADOFAI_Access
         private static void Postfix(scrCalibrationPlanet __instance)
         {
             MenuNarration.SpeakCalibrationResults(__instance);
+        }
+    }
+
+    [HarmonyPatch(typeof(TaroCutsceneScript), "DisplayText")]
+    internal static class TaroCutsceneDialoguePatch
+    {
+        private static void Postfix(TaroCutsceneScript __instance)
+        {
+            MenuNarration.SpeakCutsceneDialogue(__instance);
         }
     }
 
