@@ -295,7 +295,6 @@ namespace ADOFAI_Access
             {
                 _listenRepeatPhase = phase;
                 ResetSchedulingState();
-                TapCueService.StopAllCues();
                 ListenRepeatStartEndCueMode cueMode = ModSettings.Current.listenRepeatStartEndCueMode;
                 bool useSpeech = cueMode == ListenRepeatStartEndCueMode.Speech || cueMode == ListenRepeatStartEndCueMode.Both;
                 if (useSpeech)
@@ -312,13 +311,13 @@ namespace ADOFAI_Access
                 return;
             }
 
-            // Edge case: if a repeat target was never cued during the listen phase
-            // (for example near level end), temporarily automate that target.
-            RDC.auto = ShouldForceAutoForUncuedRepeatTarget(controller);
+            // If the upcoming repeat target's shifted cue time falls outside the
+            // corresponding listen window, it could never have been heard in Listen.
+            RDC.auto = ShouldForceAutoForUncuedRepeatTarget(controller, conductor, beatsPerGroup);
             ApplyListenDucking(conductor, shouldDuck: false);
         }
 
-        private static bool ShouldForceAutoForUncuedRepeatTarget(scrController controller)
+        private static bool ShouldForceAutoForUncuedRepeatTarget(scrController controller, scrConductor conductor, int beatsPerGroup)
         {
             if (controller == null)
             {
@@ -332,9 +331,9 @@ namespace ADOFAI_Access
                 return false;
             }
 
-            if (HandledSeqIds.Contains(target.seqID))
+            if (DidRepeatTargetMissListenCueWindow(target, conductor, beatsPerGroup))
             {
-                return false;
+                return true;
             }
 
             return IsLastRequiredFloor(target);
@@ -495,12 +494,12 @@ namespace ADOFAI_Access
                     continue;
                 }
 
-                if (HandledSeqIds.Contains(floor.seqID))
+                if (floor.entryBeat < repeatStartBeat || floor.entryBeat >= repeatEndBeat)
                 {
                     continue;
                 }
 
-                if (floor.entryBeat < repeatStartBeat || floor.entryBeat >= repeatEndBeat)
+                if (HandledSeqIds.Contains(floor.seqID))
                 {
                     continue;
                 }
@@ -785,6 +784,47 @@ namespace ADOFAI_Access
         {
             HandledSeqIds.Clear();
             HandledListenBoundaryCueKeys.Clear();
+        }
+
+        private static bool DidRepeatTargetMissListenCueWindow(scrFloor target, scrConductor conductor, int beatsPerGroup)
+        {
+            if (target == null || conductor == null || beatsPerGroup <= 0)
+            {
+                return false;
+            }
+
+            scrLevelMaker levelMaker = ADOBase.lm;
+            List<scrFloor> floors = levelMaker != null ? levelMaker.listFloors : null;
+            if (floors == null || floors.Count == 0 || beatsPerGroup <= 0)
+            {
+                return false;
+            }
+
+            int repeatGroupIndex = Mathf.FloorToInt((float)(target.entryBeat / beatsPerGroup));
+            if ((repeatGroupIndex & 1) == 0)
+            {
+                return false;
+            }
+
+            double listenStartBeat = (repeatGroupIndex - 1) * (double)beatsPerGroup;
+            double repeatStartBeat = repeatGroupIndex * (double)beatsPerGroup;
+
+            if (!TryGetEntryTimePitchAdjustedForBeat(floors, listenStartBeat, out double listenStartTime))
+            {
+                return false;
+            }
+
+            if (!TryGetEntryTimePitchAdjustedForBeat(floors, repeatStartBeat, out double repeatStartTime))
+            {
+                return false;
+            }
+
+            double listenStartDsp = conductor.dspTimeSongPosZero + listenStartTime;
+            double repeatStartDsp = conductor.dspTimeSongPosZero + repeatStartTime;
+            double groupTimeShift = repeatStartTime - listenStartTime;
+            double previewDueDsp = conductor.dspTimeSongPosZero + target.entryTimePitchAdj - groupTimeShift;
+
+            return previewDueDsp < listenStartDsp - CueLateGraceSeconds || previewDueDsp >= repeatStartDsp;
         }
     }
 }
