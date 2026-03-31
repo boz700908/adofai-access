@@ -39,6 +39,7 @@ namespace ADOFAI_Access
         private static readonly HashSet<int> LastListenScheduledSeqIds = new HashSet<int>();
         private static readonly HashSet<string> HandledListenBoundaryCueKeys = new HashSet<string>();
         private static ArmedListenGroup _armedListenGroup;
+        private static bool _listenRepeatStartupForced;
 
         public static bool IsActive => ModSettings.Current.playMode != PlayMode.Vanilla;
         public static PlayMode CurrentMode => ModSettings.Current.playMode;
@@ -210,6 +211,7 @@ namespace ADOFAI_Access
                 _listenRepeatPhase = -1;
                 LastListenScheduledSeqIds.Clear();
                 ClearArmedListenGroup();
+                _listenRepeatStartupForced = false;
                 ResetAllSchedulingState();
                 MelonLogger.Msg($"[ADOFAI Access] Play mode runtime active: {GetModeLabel(mode)}.");
                 return;
@@ -227,6 +229,7 @@ namespace ADOFAI_Access
             _listenRepeatPhase = -1;
             LastListenScheduledSeqIds.Clear();
             ClearArmedListenGroup();
+            _listenRepeatStartupForced = false;
             ResetAllSchedulingState();
             MelonLogger.Msg($"[ADOFAI Access] Play mode runtime switched: {GetModeLabel(mode)}.");
         }
@@ -246,6 +249,7 @@ namespace ADOFAI_Access
             _listenRepeatPhase = -1;
             LastListenScheduledSeqIds.Clear();
             ClearArmedListenGroup();
+            _listenRepeatStartupForced = false;
             ResetAllSchedulingState();
         }
 
@@ -315,6 +319,21 @@ namespace ADOFAI_Access
             int beatsPerGroup = Math.Max(1, ModSettings.Current.patternPreviewBeatsAhead);
             int groupIndex = Mathf.FloorToInt((float)(currentBeat / beatsPerGroup));
             int phase = (groupIndex & 1) == 0 ? 0 : 1;
+            bool suppressStartupListenAnnouncement = false;
+            if (_listenRepeatStartupForced)
+            {
+                if (currentBeat < beatsPerGroup)
+                {
+                    groupIndex = 0;
+                    phase = 0;
+                    suppressStartupListenAnnouncement = true;
+                }
+                else
+                {
+                    _listenRepeatStartupForced = false;
+                }
+            }
+
             bool phaseChanged = phase != _listenRepeatPhase;
             if (phaseChanged)
             {
@@ -328,7 +347,7 @@ namespace ADOFAI_Access
 
                 ListenRepeatStartEndCueMode cueMode = ModSettings.Current.listenRepeatStartEndCueMode;
                 bool useSpeech = cueMode == ListenRepeatStartEndCueMode.Speech || cueMode == ListenRepeatStartEndCueMode.Both;
-                if (useSpeech)
+                if (useSpeech && !(suppressStartupListenAnnouncement && phase == 0 && groupIndex == 0))
                 {
                     MenuNarration.Speak(phase == 0 ? "Listen" : "Repeat", interrupt: true);
                 }
@@ -421,6 +440,7 @@ namespace ADOFAI_Access
             }
 
             List<scrFloor> floors = levelMaker.listFloors;
+            bool suppressStartupListenStartMarker = _listenRepeatStartupForced && phase == 0 && currentGroupIndex == 0;
             foreach (BoundaryCueRequest request in GetBoundaryCueRequests(currentGroupIndex, phase, phaseChanged))
             {
                 if ((request.ListenGroupIndex & 1) != 0)
@@ -438,18 +458,21 @@ namespace ADOFAI_Access
                     continue;
                 }
 
-                TryScheduleListenBoundaryCue(
-                    conductor,
-                    floors,
-                    request.ListenGroupIndex,
-                    "start",
-                    listenStartBeat,
-                    TapCueService.GetListenStartCueDurationSeconds(),
-                    TapCueService.PlayListenStartAt,
-                    TapCueService.PlayListenStartNow,
-                    nowDsp,
-                    repeatStartDsp,
-                    request.AllowImmediateStart);
+                if (!(suppressStartupListenStartMarker && request.ListenGroupIndex == 0))
+                {
+                    TryScheduleListenBoundaryCue(
+                        conductor,
+                        floors,
+                        request.ListenGroupIndex,
+                        "start",
+                        listenStartBeat,
+                        TapCueService.GetListenStartCueDurationSeconds(),
+                        TapCueService.PlayListenStartAt,
+                        TapCueService.PlayListenStartNow,
+                        nowDsp,
+                        repeatStartDsp,
+                        request.AllowImmediateStart);
+                }
                 TryScheduleListenBoundaryCue(
                     conductor,
                     floors,
@@ -685,11 +708,43 @@ namespace ADOFAI_Access
             _armedListenGroup = null;
         }
 
+        internal static void PrimeListenRepeatStart(scrController controller)
+        {
+            if (controller == null || ModSettings.Current.playMode != PlayMode.ListenRepeat || LevelPreview.IsActive)
+            {
+                return;
+            }
+
+            scrConductor conductor = ADOBase.conductor;
+            scrFloor current = controller.currFloor;
+            if (conductor == null || current == null)
+            {
+                return;
+            }
+
+            int beatsPerGroup = Math.Max(1, ModSettings.Current.patternPreviewBeatsAhead);
+            if (current.entryBeat >= beatsPerGroup)
+            {
+                _listenRepeatStartupForced = false;
+                return;
+            }
+
+            _listenRepeatStartupForced = true;
+            _listenRepeatPhase = -1;
+            LastListenScheduledSeqIds.Clear();
+            ClearArmedListenGroup();
+            ResetAllSchedulingState();
+
+            _armedListenGroup = BuildArmedListenGroup(conductor, beatsPerGroup, listenGroupIndex: 0);
+            FlushArmedListenGroup(conductor, conductor.dspTime, allowImmediateLatePlayback: false);
+        }
+
         private static void ResetListenRepeatRunState()
         {
             _listenRepeatPhase = -1;
             LastListenScheduledSeqIds.Clear();
             ClearArmedListenGroup();
+            _listenRepeatStartupForced = false;
             ResetAllSchedulingState();
         }
 
@@ -996,5 +1051,14 @@ namespace ADOFAI_Access
             return conductor.crotchetAtStart / pitch;
         }
 
+    }
+
+    [HarmonyLib.HarmonyPatch(typeof(scrController), "PlayerControl_Enter")]
+    internal static class PatternPreviewPlayerControlEnterPatch
+    {
+        private static void Postfix()
+        {
+            PatternPreview.PrimeListenRepeatStart(ADOBase.controller);
+        }
     }
 }
