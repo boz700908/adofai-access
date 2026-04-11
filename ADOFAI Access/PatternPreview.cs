@@ -82,7 +82,6 @@ namespace ADOFAI_Access
             switch (_runtimeMode)
             {
                 case PlayMode.PatternPreview:
-                    ListenRepeatMode.Stop();
                     RestoreAuto();
                     TryScheduleNextBarCues();
                     break;
