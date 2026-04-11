@@ -53,5 +53,5 @@ Writes level/runtime JSON dumps to `UserData/ADOFAI_Access/LevelDumps`. Not usef
 ### Audio cue customization
 While the mod ships with all the needed sounds, you can customize them by placing appropriately named files in `UserData/ADOFAI_Access/Audio`. The files have to be in the WAV format.
 - `tap.wav`: the tap audio cue
-- `listen_start.wav`: the audio cue for the start of listen groups in listen-repeat (is expected to be exactly 1 beat long at 128BPM)
-- `listen_end.wav`: the audio cue for the end of listen groups in listen-repeat (is expected to be exactly 1 beat long at 128BPM)
+- `listen_start.wav`: the audio cue for the start of listen groups in listen-repeat
+- `listen_end.wav`: the audio cue for the end of listen groups in listen-repeat
