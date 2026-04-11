@@ -72,6 +72,7 @@ namespace ADOFAI_Access
             if (context == MenuContext.LevelSelect && !_openHintSpokenLevelSelect)
             {
                 _openHintSpokenLevelSelect = true;
+                MenuNarration.SuppressWorldAnnouncementsForSeconds(1.5f);
                 MenuNarration.Speak("Press F6 to open accessible menu", interrupt: false);
             }
             else if (context == MenuContext.CustomLevelsInitial && !_openHintSpokenClsInitial)
@@ -92,6 +93,7 @@ namespace ADOFAI_Access
             else if (context == MenuContext.NeoCosmosMap && !_openHintSpokenNeoCosmos)
             {
                 _openHintSpokenNeoCosmos = true;
+                MenuNarration.SuppressWorldAnnouncementsForSeconds(1.5f);
                 MenuNarration.Speak("Press F6 to open accessible menu", interrupt: false);
             }
 

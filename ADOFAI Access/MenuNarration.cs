@@ -24,6 +24,7 @@ namespace ADOFAI_Access
         private static float _lastLevelStartAt;
         private static float _lastLevelEndAt;
         private static float _lastDeathAt;
+        private static float _suppressWorldAnnouncementUntil;
         private static bool _clsLeftPanelOpen;
         private static bool _clsRightPanelOpen;
         private static string _lastClsDisplayedTitle = string.Empty;
@@ -445,6 +446,11 @@ namespace ADOFAI_Access
                 return;
             }
 
+            if (Time.unscaledTime < _suppressWorldAnnouncementUntil)
+            {
+                return;
+            }
+
             string normalizedWorld = NormalizeText(world);
             if (string.IsNullOrEmpty(normalizedWorld))
             {
@@ -465,6 +471,16 @@ namespace ADOFAI_Access
 
             _lastAnnouncedWorld = normalizedWorld;
             Speak($"World {normalizedWorld}", interrupt: true);
+        }
+
+        public static void SuppressWorldAnnouncementsForSeconds(float seconds)
+        {
+            if (seconds <= 0f)
+            {
+                return;
+            }
+
+            _suppressWorldAnnouncementUntil = Mathf.Max(_suppressWorldAnnouncementUntil, Time.unscaledTime + seconds);
         }
 
         public static void SpeakLevelGetReady(string text)
