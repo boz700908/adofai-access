@@ -11,10 +11,13 @@ namespace ADOFAI_Access
     {
         private static readonly FieldInfo PlayerControllersField = AccessTools.Field(typeof(PlayerSelect), "playerControllers");
         private static readonly FieldInfo PlayerJoysticksField = AccessTools.Field(typeof(PlayerSelect), "playerJoysticks");
+        private static readonly FieldInfo ShowingAtStartupField = AccessTools.Field(typeof(PlayerSelect), "showingAtStartup");
 
         private static bool _open;
         private static bool _continuing;
         private static PlayerSelect _playerSelect;
+        private static PlayerSelect _sessionPlayerSelect;
+        private static bool _sessionMenuHandled;
         private static int _playerCount;
         private static int _selectedIndex;
         private static ListenRepeatPlayerMode[] _workingModes = new ListenRepeatPlayerMode[4];
@@ -23,9 +26,19 @@ namespace ADOFAI_Access
 
         public static bool TryOpen(PlayerSelect playerSelect)
         {
-            if (_continuing || playerSelect == null || ModSettings.Current.playMode != PlayMode.ListenRepeat)
+            if (_continuing || playerSelect == null || ModSettings.Current.playMode != PlayMode.ListenRepeat || IsShowingAtStartup(playerSelect))
             {
                 return false;
+            }
+
+            if (_open)
+            {
+                return true;
+            }
+
+            if (ReferenceEquals(_sessionPlayerSelect, playerSelect) && _sessionMenuHandled)
+            {
+                return true;
             }
 
             int playerCount = playerSelect.playersSelected.GetValueOrDefault(scrPlayerManager.playerCount);
@@ -39,6 +52,8 @@ namespace ADOFAI_Access
             }
 
             _playerSelect = playerSelect;
+            _sessionPlayerSelect = playerSelect;
+            _sessionMenuHandled = true;
             _playerCount = playerCount;
             _selectedIndex = 0;
             Array.Copy(ModSettings.Current.listenRepeatPlayerModes, _workingModes, _workingModes.Length);
@@ -236,6 +251,22 @@ namespace ADOFAI_Access
         {
             return mode == ListenRepeatPlayerMode.ListenRepeat ? "listen-repeat" : "vanilla";
         }
+
+        private static bool IsShowingAtStartup(PlayerSelect playerSelect)
+        {
+            return ShowingAtStartupField != null && ShowingAtStartupField.GetValue(playerSelect) is bool showingAtStartup && showingAtStartup;
+        }
+
+        public static void BeginPlayerSelectSession(PlayerSelect playerSelect)
+        {
+            if (playerSelect == null || _open || _continuing)
+            {
+                return;
+            }
+
+            _sessionPlayerSelect = playerSelect;
+            _sessionMenuHandled = false;
+        }
     }
 
     [HarmonyPatch(typeof(PlayerSelect), "Finish")]
@@ -244,6 +275,15 @@ namespace ADOFAI_Access
         private static bool Prefix(PlayerSelect __instance)
         {
             return !ListenRepeatPlayerMenu.TryOpen(__instance);
+        }
+    }
+
+    [HarmonyPatch(typeof(PlayerSelect), nameof(PlayerSelect.Show))]
+    internal static class ListenRepeatPlayerMenuShowPatch
+    {
+        private static void Postfix(PlayerSelect __instance)
+        {
+            ListenRepeatPlayerMenu.BeginPlayerSelectSession(__instance);
         }
     }
 

@@ -318,7 +318,7 @@ namespace ADOFAI_Access
 
         public static void SpeakFocusedButton(GeneralPauseButton button)
         {
-            if (AccessSettingsMenu.IsOpen || !ModSettings.Current.menuNarrationEnabled || button == null || ADOBase.isLevelEditor)
+            if (AccessSettingsMenu.IsOpen || ListenRepeatPlayerMenu.IsOpen || !ModSettings.Current.menuNarrationEnabled || button == null || ADOBase.isLevelEditor)
             {
                 return;
             }
@@ -379,7 +379,7 @@ namespace ADOFAI_Access
 
         public static void SpeakPlayerSelectButton(PlayerSelectButton button)
         {
-            if (AccessSettingsMenu.IsOpen || !ModSettings.Current.menuNarrationEnabled || button == null || ADOBase.isLevelEditor)
+            if (AccessSettingsMenu.IsOpen || ListenRepeatPlayerMenu.IsOpen || !ModSettings.Current.menuNarrationEnabled || button == null || ADOBase.isLevelEditor)
             {
                 return;
             }
