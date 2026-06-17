@@ -252,7 +252,7 @@ namespace ADOFAI_Access
                     ["isBossLevel"] = controller.isbosslevel,
                     ["isPuzzleRoom"] = controller.isPuzzleRoom,
                     ["gameworld"] = controller.gameworld,
-                    ["responsive"] = controller.responsive
+                    ["responsive"] = ControllerCompat.GetResponsive()
                 },
                 ["levelData"] = BuildLevelData(scene),
                 ["runtimeFloors"] = BuildFloors(floors)

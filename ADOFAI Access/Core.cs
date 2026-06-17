@@ -47,6 +47,47 @@ namespace ADOFAI_Access
         }
     }
 
+    // Game 3.1.x moved input responsiveness off scrController (the old
+    // `scrController.responsive` field) onto each scrPlayer, driven through
+    // scrPlayerManager.SetAllPlayerResponsive(...). These helpers mirror that
+    // change so the custom menus can still suspend/restore map navigation input.
+    internal static class ControllerCompat
+    {
+        private static scrPlayer[] GetPlayers()
+        {
+            scrPlayerManager pm = ADOBase.playerManager;
+            return pm != null ? pm.players : null;
+        }
+
+        public static bool GetResponsive()
+        {
+            scrPlayer[] players = GetPlayers();
+            if (players != null && players.Length > 0 && players[0] != null)
+            {
+                return players[0].responsive;
+            }
+
+            return false;
+        }
+
+        public static void SetResponsive(bool value)
+        {
+            scrPlayer[] players = GetPlayers();
+            if (players == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < players.Length; i++)
+            {
+                if (players[i] != null)
+                {
+                    players[i].responsive = value;
+                }
+            }
+        }
+    }
+
     internal static class CustomMenuInputGuard
     {
         private static bool _active;

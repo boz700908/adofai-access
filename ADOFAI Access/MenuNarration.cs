@@ -11,6 +11,31 @@ using UnityEngine.UI;
 
 namespace ADOFAI_Access
 {
+    // Game 3.1.x changed PauseMenu.playerSelect / practiceTimeline / pauseLevel
+    // from public fields to private. Access them through cached reflection so the
+    // narration paths keep working without depending on field visibility.
+    internal static class PauseMenuCompat
+    {
+        private static readonly FieldInfo PlayerSelectField = AccessTools.Field(typeof(PauseMenu), "playerSelect");
+        private static readonly FieldInfo PracticeTimelineField = AccessTools.Field(typeof(PauseMenu), "practiceTimeline");
+        private static readonly FieldInfo PauseLevelField = AccessTools.Field(typeof(PauseMenu), "pauseLevel");
+
+        public static PlayerSelect GetPlayerSelect(PauseMenu menu)
+        {
+            return menu != null && PlayerSelectField != null ? PlayerSelectField.GetValue(menu) as PlayerSelect : null;
+        }
+
+        public static PracticeTimeline GetPracticeTimeline(PauseMenu menu)
+        {
+            return menu != null && PracticeTimelineField != null ? PracticeTimelineField.GetValue(menu) as PracticeTimeline : null;
+        }
+
+        public static PauseLevel GetPauseLevel(PauseMenu menu)
+        {
+            return menu != null && PauseLevelField != null ? PauseLevelField.GetValue(menu) as PauseLevel : null;
+        }
+    }
+
     internal static class MenuNarration
     {
         private const KeyCode NarrationToggleKey = KeyCode.F4;
@@ -400,7 +425,7 @@ namespace ADOFAI_Access
             }
 
             PauseMenu pauseMenu = ADOBase.controller != null ? ADOBase.controller.pauseMenu : null;
-            PlayerSelect playerSelect = pauseMenu != null ? pauseMenu.playerSelect : null;
+            PlayerSelect playerSelect = PauseMenuCompat.GetPlayerSelect(pauseMenu);
             if (pauseMenu == null || playerSelect == null || pauseMenu.currentPauseButton != button || !playerSelect.playersSelected.HasValue || playerSelect.waitingForInput)
             {
                 return;
@@ -444,7 +469,7 @@ namespace ADOFAI_Access
             valueState = string.Empty;
 
             PauseMenu pauseMenu = ADOBase.controller != null ? ADOBase.controller.pauseMenu : null;
-            PlayerSelect playerSelect = pauseMenu != null ? pauseMenu.playerSelect : null;
+            PlayerSelect playerSelect = PauseMenuCompat.GetPlayerSelect(pauseMenu);
             if (playerSelect == null)
             {
                 label = BestOf(button.label != null ? button.label.text : null, button.name);
@@ -976,7 +1001,7 @@ namespace ADOFAI_Access
 
             scrController controller = ADOBase.controller;
             PauseMenu pauseMenu = controller != null ? controller.pauseMenu : null;
-            PracticeTimeline timeline = pauseMenu != null ? pauseMenu.practiceTimeline : null;
+            PracticeTimeline timeline = PauseMenuCompat.GetPracticeTimeline(pauseMenu);
             if (timeline == null)
             {
                 return false;
@@ -1033,7 +1058,7 @@ namespace ADOFAI_Access
 
             scrController controller = ADOBase.controller;
             PauseMenu pauseMenu = controller != null ? controller.pauseMenu : null;
-            PauseLevel pauseLevel = pauseMenu != null ? pauseMenu.pauseLevel : null;
+            PauseLevel pauseLevel = PauseMenuCompat.GetPauseLevel(pauseMenu);
             if (pauseLevel == null)
             {
                 return false;
@@ -1534,7 +1559,7 @@ namespace ADOFAI_Access
             __state.SelectedVerticalIndex = (int)SelectedVerticalIndexField.GetValue(__instance);
             __state.NextSpeedRun = GCS.nextSpeedRun;
 
-            PracticeTimeline timeline = __instance.practiceTimeline;
+            PracticeTimeline timeline = PauseMenuCompat.GetPracticeTimeline(__instance);
             if (timeline != null)
             {
                 __state.PracticeStart = timeline.practiceStart;
@@ -1552,7 +1577,7 @@ namespace ADOFAI_Access
 
             if (__state.PracticeMode)
             {
-                PracticeTimeline timeline = __instance.practiceTimeline;
+                PracticeTimeline timeline = PauseMenuCompat.GetPracticeTimeline(__instance);
                 if (timeline == null)
                 {
                     return;
@@ -1722,14 +1747,14 @@ namespace ADOFAI_Access
     [HarmonyPatch(typeof(OptionsPanelsCLS), nameof(OptionsPanelsCLS.SelectOption), new Type[] { typeof(int) })]
     internal static class CustomLevelsOptionSelectionByIndexPatch
     {
-        private static void Postfix(OptionsPanelsCLS __instance, int option)
+        private static void Postfix(OptionsPanelsCLS __instance, int optionName)
         {
             if (ADOBase.sceneName == GCNS.sceneCustomLevelSelect && ADOBase.cls != null)
             {
                 return;
             }
 
-            MenuNarration.SpeakClsOptionByIndex(__instance, option);
+            MenuNarration.SpeakClsOptionByIndex(__instance, optionName);
         }
     }
 

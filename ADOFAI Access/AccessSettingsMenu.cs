@@ -164,8 +164,8 @@ namespace ADOFAI_Access
             scrController controller = ADOBase.controller;
             if (controller != null)
             {
-                _restoreResponsive = controller.responsive;
-                controller.responsive = false;
+                _restoreResponsive = ControllerCompat.GetResponsive();
+                ControllerCompat.SetResponsive(false);
                 _wasPausedBeforeOpen = controller.paused;
                 if (controller.paused)
                 {
@@ -189,7 +189,7 @@ namespace ADOFAI_Access
             scrController controller = ADOBase.controller;
             if (controller != null)
             {
-                controller.responsive = _restoreResponsive;
+                ControllerCompat.SetResponsive(_restoreResponsive);
 
                 if (_wasPausedBeforeOpen && !controller.paused)
                 {

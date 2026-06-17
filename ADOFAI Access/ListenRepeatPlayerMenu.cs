@@ -59,11 +59,7 @@ namespace ADOFAI_Access
             Array.Copy(ModSettings.Current.listenRepeatPlayerModes, _workingModes, _workingModes.Length);
             _open = true;
 
-            scrController controller = ADOBase.controller;
-            if (controller != null)
-            {
-                controller.responsive = false;
-            }
+            ControllerCompat.SetResponsive(false);
 
             MenuNarration.Speak("Listen-repeat players. Up and down to navigate. Left, right, or enter to change. Choose continue when done.", interrupt: true);
             SpeakSelection();
@@ -175,11 +171,7 @@ namespace ADOFAI_Access
             _open = false;
             _playerSelect = null;
 
-            scrController controller = ADOBase.controller;
-            if (controller != null)
-            {
-                controller.responsive = true;
-            }
+            ControllerCompat.SetResponsive(true);
 
             if (playerSelect == null)
             {

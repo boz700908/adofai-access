@@ -188,8 +188,8 @@ namespace ADOFAI_Access
             scrController controller = ADOBase.controller;
             if (controller != null)
             {
-                _restoreResponsive = controller.responsive;
-                controller.responsive = false;
+                _restoreResponsive = ControllerCompat.GetResponsive();
+                ControllerCompat.SetResponsive(false);
             }
             else
             {
@@ -209,7 +209,7 @@ namespace ADOFAI_Access
             scrController controller = ADOBase.controller;
             if (controller != null)
             {
-                controller.responsive = _restoreResponsive;
+                ControllerCompat.SetResponsive(_restoreResponsive);
             }
 
             _restoreResponsive = false;
@@ -940,8 +940,11 @@ namespace ADOFAI_Access
                 return;
             }
 
-            panels.sortingMethod = optionName;
-            cls.sortedLevelKeys = panels.SortedLevelKeys();
+            // Game 3.1.x moved sort state off OptionsPanelsCLS onto scnCLS:
+            // sortingMethod/sortedLevelKeys live on the scene, and SortLevelKeys()
+            // populates sortedLevelKeys from the current sortingMethod.
+            cls.sortingMethod = optionName;
+            cls.SortLevelKeys();
             cls.SearchLevels(cls.searchParameter);
             panels.UpdateOrderText();
             MenuNarration.Speak("Sort by " + spokenName, interrupt: true);
