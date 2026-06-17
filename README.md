@@ -2,6 +2,16 @@
 
 A blind accessibility mod for A Dance of Fire and Ice (work in progress)
 
+<!-- website-hide-start -->
+
+## View this on my website
+
+ADOFAI Access is also available on my website (recommended for most users)
+
+[View ADOFAI Access on my website](https://molitvan.me/projects/adofai-access)
+
+<!-- website-hide-end -->
+
 ## Important note
 
 This mod is still in early development. There are a lot of known issues and parts of the game that still aren't supported. Keep this in mind before purchasing the game. For any questions, the best place to ask is [the mod's channel on the Accessibility Disco Discord server](https://go.molitvan.me/ADOFAIAccessDiscord).
