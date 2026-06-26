@@ -419,6 +419,7 @@
 	<ItemGroup>
 		<Compile Include="AccessibleLevelSelectMenu.cs" />
 		<Compile Include="AccessSettingsMenu.cs" />
+		<Compile Include="AudioGlossaryMenu.cs" />
 		<Compile Include="Core.cs" />
 		<Compile Include="LevelDataDump.cs" />
 		<Compile Include="ListenRepeatMode.cs" />

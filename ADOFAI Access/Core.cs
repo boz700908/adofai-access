@@ -37,6 +37,7 @@ namespace ADOFAI_Access
         public override void OnUpdate()
         {
             AccessSettingsMenu.Tick();
+            AudioGlossaryMenu.Tick();
             ListenRepeatPlayerMenu.Tick();
             MenuNarration.Tick();
             AccessibleLevelSelectMenu.Tick();
@@ -96,7 +97,7 @@ namespace ADOFAI_Access
         private static bool _hadEventSystem;
         private static bool _previousSendNavigationEvents;
 
-        public static bool ShouldBlockInput => AccessSettingsMenu.IsOpen || AccessibleLevelSelectMenu.IsOpen || ListenRepeatPlayerMenu.IsOpen;
+        public static bool ShouldBlockInput => AccessSettingsMenu.IsOpen || AccessibleLevelSelectMenu.IsOpen || ListenRepeatPlayerMenu.IsOpen || AudioGlossaryMenu.IsOpen;
         public static bool ShouldSuppressPauseToggle => Time.frameCount <= _suppressPauseUntilFrame;
 
         public static void SuppressPauseForFrames(int frameCount = 2)

@@ -110,6 +110,11 @@ namespace ADOFAI_Access
 
         public static void Tick()
         {
+            if (AudioGlossaryMenu.IsOpen)
+            {
+                return;
+            }
+
             if (Input.GetKeyDown(ToggleKey))
             {
                 if (_open)

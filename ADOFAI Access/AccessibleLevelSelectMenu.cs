@@ -47,7 +47,7 @@ namespace ADOFAI_Access
 
         public static void Tick()
         {
-            if (AccessSettingsMenu.IsOpen)
+            if (AccessSettingsMenu.IsOpen || AudioGlossaryMenu.IsOpen)
             {
                 return;
             }
@@ -296,6 +296,12 @@ namespace ADOFAI_Access
 
         private static void BuildLevelSelectEntries()
         {
+            AddEntry("ADOFAI Access audio cue glossary", () =>
+            {
+                Close(speak: false);
+                AudioGlossaryMenu.Open();
+            });
+
             AddEntry("Open calibration", () =>
             {
                 Close(speak: false);
