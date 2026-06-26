@@ -191,10 +191,10 @@ namespace ADOFAI_Access
                 return false;
             }
 
-            // isScnGame is custom-level-only; official levels report via isPlayingLevel. Cover both, plus
-            // the gameplay scene name and puzzle rooms.
+            // isScnGame is custom-level-only; official levels report via ControllerCompat.IsPlayingLevel().
+            // Cover both, plus the gameplay scene name and puzzle rooms.
             bool inLevel = ADOBase.isScnGame
-                || ADOBase.isPlayingLevel
+                || ControllerCompat.IsPlayingLevel()
                 || ADOBase.sceneName == GCNS.sceneGame
                 || controller.isPuzzleRoom;
             if (!inLevel)

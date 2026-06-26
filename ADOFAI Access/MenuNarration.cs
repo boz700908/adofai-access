@@ -1741,7 +1741,7 @@ namespace ADOFAI_Access
     {
         private static void Postfix()
         {
-            if (ADOBase.isScnGame && ADOBase.isPlayingLevel)
+            if (ADOBase.isScnGame && ControllerCompat.IsPlayingLevel())
             {
                 MenuNarration.SpeakLevelStart();
             }
@@ -1753,7 +1753,7 @@ namespace ADOFAI_Access
     {
         private static void Postfix()
         {
-            if (ADOBase.isPlayingLevel)
+            if (ControllerCompat.IsPlayingLevel())
             {
                 scrController controller = ADOBase.controller;
                 string text = controller != null && controller.txtCongrats != null ? controller.txtCongrats.text : null;
@@ -1767,7 +1767,7 @@ namespace ADOFAI_Access
     {
         private static void Postfix()
         {
-            if (ADOBase.isScnGame || ADOBase.isPlayingLevel)
+            if (ADOBase.isScnGame || ControllerCompat.IsPlayingLevel())
             {
                 MenuNarration.SpeakDeath();
             }

@@ -608,7 +608,7 @@ namespace ADOFAI_Access
             string author = hasLevelData ? NormalizeForSpeech(scene.levelData.author) : string.Empty;
             string hash = hasLevelData ? scene.levelData.Hash : string.Empty;
             string worldKey = scrController.currentWorldString;
-            bool hasOfficialWorld = ADOBase.isOfficialLevel && !string.IsNullOrWhiteSpace(worldKey) && GCNS.worldData.ContainsKey(worldKey);
+            bool hasOfficialWorld = ADOBase.isOfficialLevel && !string.IsNullOrWhiteSpace(worldKey) && WorldData.dict.ContainsKey(worldKey);
             bool hasCustomStats = !ADOBase.isOfficialLevel && !string.IsNullOrWhiteSpace(hash);
 
             AddEntry("Toggle speed trial", () =>
@@ -871,7 +871,7 @@ namespace ADOFAI_Access
                 return false;
             }
 
-            bool gameplayLikeScene = ADOBase.sceneName == GCNS.sceneGame || ADOBase.isScnGame || ADOBase.isPlayingLevel || controller.gameworld || controller.isPuzzleRoom;
+            bool gameplayLikeScene = ADOBase.sceneName == GCNS.sceneGame || ADOBase.isScnGame || ControllerCompat.IsPlayingLevel() || controller.gameworld || controller.isPuzzleRoom;
             if (!gameplayLikeScene || controller.state != States.Start)
             {
                 return false;
@@ -909,7 +909,7 @@ namespace ADOFAI_Access
 
         private static IEnumerable<string> FilterExistingTaroWorlds(params string[] worlds)
         {
-            return worlds.Where(w => !string.IsNullOrWhiteSpace(w) && GCNS.worldData.ContainsKey(w));
+            return worlds.Where(w => !string.IsNullOrWhiteSpace(w) && WorldData.dict.ContainsKey(w));
         }
 
         private static bool TryGetPortal(string worldId, out scrPortal portal)
@@ -1051,7 +1051,7 @@ namespace ADOFAI_Access
         private static string BuildWorldProgressEntryLabel(string worldId, string displayWorldId)
         {
             string label = $"World {displayWorldId}";
-            if (string.IsNullOrWhiteSpace(worldId) || !GCNS.worldData.TryGetValue(worldId, out GCNS.WorldData worldData))
+            if (string.IsNullOrWhiteSpace(worldId) || !WorldData.dict.TryGetValue(worldId, out WorldData worldData))
             {
                 return label;
             }
@@ -1149,7 +1149,7 @@ namespace ADOFAI_Access
                 return false;
             }
 
-            if (!GCNS.worldData.TryGetValue(world, out GCNS.WorldData worldData))
+            if (!WorldData.dict.TryGetValue(world, out WorldData worldData))
             {
                 return false;
             }

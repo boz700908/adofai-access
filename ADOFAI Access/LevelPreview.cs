@@ -199,7 +199,7 @@ namespace ADOFAI_Access
                 return false;
             }
 
-            if (ADOBase.sceneName == GCNS.sceneGame || ADOBase.isScnGame || ADOBase.isPlayingLevel)
+            if (ADOBase.sceneName == GCNS.sceneGame || ADOBase.isScnGame || ControllerCompat.IsPlayingLevel())
             {
                 return true;
             }

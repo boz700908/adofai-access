@@ -205,9 +205,9 @@ namespace ADOFAI_Access
             string worldKey = scrController.currentWorldString;
 
             object worldData = null;
-            if (!string.IsNullOrEmpty(worldKey) && GCNS.worldData.ContainsKey(worldKey))
+            if (!string.IsNullOrEmpty(worldKey) && WorldData.dict.ContainsKey(worldKey))
             {
-                GCNS.WorldData w = GCNS.worldData[worldKey];
+                WorldData w = WorldData.dict[worldKey];
                 worldData = new Dictionary<string, object>
                 {
                     ["key"] = worldKey,
@@ -238,7 +238,7 @@ namespace ADOFAI_Access
                     ["isInternalLevel"] = ADOBase.isInternalLevel,
                     ["isCLSLevel"] = ADOBase.isCLSLevel,
                     ["isOfficialLevel"] = ADOBase.isOfficialLevel,
-                    ["isPlayingLevel"] = ADOBase.isPlayingLevel,
+                    ["isPlayingLevel"] = ControllerCompat.IsPlayingLevel(),
                     ["speedTrialMode"] = GCS.speedTrialMode,
                     ["currentSpeedTrial"] = GCS.currentSpeedTrial,
                     ["practiceMode"] = GCS.practiceMode,

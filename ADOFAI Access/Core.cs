@@ -87,6 +87,16 @@ namespace ADOFAI_Access
                 }
             }
         }
+
+        // Game 3.2.0 removed ADOBase.isPlayingLevel (and ADOBase.isFeaturedLevel).
+        // The old property was (isOfficialLevel || isFeaturedLevel) && !isLevelSelect.
+        // In 3.2.0 isOfficialLevel already excludes CLS levels and the level editor
+        // (controller != null && !isCLSLevel && !isLevelEditor), so the closest
+        // equivalent is "an official level that is not the level-select scene".
+        public static bool IsPlayingLevel()
+        {
+            return ADOBase.isOfficialLevel && !ADOBase.isLevelSelect;
+        }
     }
 
     internal static class CustomMenuInputGuard
