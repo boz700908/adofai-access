@@ -33,7 +33,9 @@ namespace ADOFAI_Access
         public bool levelPreviewCuesEnabled = true;
         public PlayMode playMode = PlayMode.Vanilla;
         public int patternPreviewBeatsAhead = 4;
+        public bool patternPreviewFollowInitialBpm = false;
         public int listenRepeatGroupBeats = 0;
+        public bool listenRepeatFollowInitialBpm = false;
         public bool listenRepeatAudioDuckingEnabled = true;
         public ListenRepeatStartEndCueMode listenRepeatStartEndCueMode = ListenRepeatStartEndCueMode.Sound;
         public ListenRepeatPlayerMode[] listenRepeatPlayerModes =

@@ -6,6 +6,12 @@ namespace ADOFAI_Access
 {
     internal static class PlayModeTiming
     {
+        // Small nudge applied when classifying a position into a constant-BPM
+        // grouping coordinate, so a floor sitting exactly on a group boundary
+        // (e.g. grid beat 4.0) does not compute as 3.99999... and fall into the
+        // previous group. Kept well below ListenRepeatMode's boundary epsilon.
+        internal const double GroupingBoundaryEpsilon = 1e-6;
+
         internal static bool IsGameplayRuntimeAvailable()
         {
             scrController controller = ADOBase.controller;
@@ -94,6 +100,19 @@ namespace ADOFAI_Access
             if (beatsAhead <= 0)
             {
                 return false;
+            }
+
+            if (ModSettings.Current.patternPreviewFollowInitialBpm)
+            {
+                // Constant lead in seconds = beatsAhead beats at the level's starting BPM.
+                // The cue stream becomes the real tap rhythm shifted back by a fixed amount,
+                // so its rhythm still follows tempo changes but the lead never changes length.
+                double beatDuration = GetBeatDurationSeconds(conductor);
+                if (beatDuration > 0.0)
+                {
+                    previewDueDsp = conductor.dspTimeSongPosZero + targetFloor.entryTimePitchAdj - beatDuration * beatsAhead;
+                    return true;
+                }
             }
 
             double previewBeat = targetFloor.entryBeat - beatsAhead;
@@ -229,6 +248,69 @@ namespace ADOFAI_Access
             }
 
             return conductor.crotchetAtStart / pitch;
+        }
+
+        // --- Constant-BPM grouping coordinate -------------------------------------------------
+        // These helpers express positions in a "grouping beat" coordinate whose beat length is
+        // fixed at the level's starting BPM (GetBeatDurationSeconds), instead of following the
+        // real per-floor tempo. Listen-repeat uses this (when listenRepeatFollowInitialBpm is on)
+        // so listen/repeat windows have a constant wall-clock duration even across tempo changes;
+        // the tap cues inside the windows still use each floor's real entryTimePitchAdj.
+
+        // Floor-timeline time (entryTimePitchAdj-equivalent) of musical beat 0. A count-in tile
+        // (entryBeat == -1) can occupy several seconds before beat 0, so the grouping coordinate
+        // is anchored here rather than to the song-position-zero DSP origin.
+        internal static double GetBeatZeroTimeOffset(List<scrFloor> floors)
+        {
+            if (TryGetEntryTimePitchAdjustedForBeat(floors, 0.0, out double beatZeroTime))
+            {
+                return beatZeroTime;
+            }
+
+            return 0.0;
+        }
+
+        // Floor-timeline time for a constant-BPM grouping coordinate (inverse of GetGroupingBeatForTime,
+        // without the classification epsilon).
+        internal static double GetGroupingTimeForBeat(scrConductor conductor, List<scrFloor> floors, double groupingBeat)
+        {
+            return GetBeatZeroTimeOffset(floors) + groupingBeat * GetBeatDurationSeconds(conductor);
+        }
+
+        internal static double GetGroupingBeatForTime(scrConductor conductor, List<scrFloor> floors, double floorTimelineTime)
+        {
+            double beatDuration = GetBeatDurationSeconds(conductor);
+            if (beatDuration <= 0.0)
+            {
+                return 0.0;
+            }
+
+            double groupingBeat = (floorTimelineTime - GetBeatZeroTimeOffset(floors)) / beatDuration;
+            if (groupingBeat < 0.0)
+            {
+                groupingBeat = 0.0;
+            }
+
+            return groupingBeat + GroupingBoundaryEpsilon;
+        }
+
+        internal static double GetGroupingBeatForFloor(scrConductor conductor, List<scrFloor> floors, scrFloor floor)
+        {
+            return GetGroupingBeatForTime(conductor, floors, floor.entryTimePitchAdj);
+        }
+
+        // Current playback position expressed as a constant-BPM grouping coordinate.
+        internal static bool TryGetGroupingBeat(scrConductor conductor, List<scrFloor> floors, out double groupingBeat)
+        {
+            groupingBeat = 0.0;
+            if (conductor == null || GetBeatDurationSeconds(conductor) <= 0.0)
+            {
+                return false;
+            }
+
+            double currentFloorTime = conductor.dspTime - conductor.dspTimeSongPosZero;
+            groupingBeat = GetGroupingBeatForTime(conductor, floors, currentFloorTime);
+            return true;
         }
     }
 }

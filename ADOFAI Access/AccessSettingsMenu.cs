@@ -44,11 +44,27 @@ namespace ADOFAI_Access
             },
             new SettingOption
             {
+                Label = "Pattern preview follow starting BPM",
+                ControlType = "toggle",
+                GetValue = settings => settings.patternPreviewFollowInitialBpm ? "on" : "off",
+                Change = (settings, delta) => settings.patternPreviewFollowInitialBpm = delta > 0,
+                Activate = settings => settings.patternPreviewFollowInitialBpm = !settings.patternPreviewFollowInitialBpm
+            },
+            new SettingOption
+            {
                 Label = "Listen-repeat group beats",
                 ControlType = "setting",
                 GetValue = settings => settings.listenRepeatGroupBeats.ToString(),
                 Change = (settings, delta) => settings.listenRepeatGroupBeats = StepBeatSetting(settings.listenRepeatGroupBeats, delta),
                 Activate = settings => settings.listenRepeatGroupBeats = WrapBeatSetting(settings.listenRepeatGroupBeats)
+            },
+            new SettingOption
+            {
+                Label = "Listen-repeat follow starting BPM",
+                ControlType = "toggle",
+                GetValue = settings => settings.listenRepeatFollowInitialBpm ? "on" : "off",
+                Change = (settings, delta) => settings.listenRepeatFollowInitialBpm = delta > 0,
+                Activate = settings => settings.listenRepeatFollowInitialBpm = !settings.listenRepeatFollowInitialBpm
             },
             new SettingOption
             {

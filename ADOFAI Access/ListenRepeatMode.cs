@@ -65,7 +65,7 @@ namespace ADOFAI_Access
                 return;
             }
 
-            if (!PlayModeTiming.TryGetCurrentBeat(controller, conductor, out double currentBeat))
+            if (!TryGetGroupBeat(controller, conductor, out double currentBeat))
             {
                 ApplyListenDucking(conductor, shouldDuck: false);
                 return;
@@ -144,7 +144,7 @@ namespace ADOFAI_Access
             }
 
             int beatsPerGroup = Math.Max(1, ModSettings.Current.listenRepeatGroupBeats);
-            double currentBeat = current.entryBeat;
+            double currentBeat = GetFloorGroupBeat(conductor, current);
             int currentGroupIndex = Mathf.FloorToInt((float)(currentBeat / beatsPerGroup));
             double currentGroupStartBeat = currentGroupIndex * (double)beatsPerGroup;
             bool atGroupBoundary = Math.Abs(currentBeat - currentGroupStartBeat) <= ListenRepeatBoundaryEpsilon;
@@ -173,6 +173,71 @@ namespace ADOFAI_Access
 
             _armedListenGroup = BuildArmedListenGroup(conductor, beatsPerGroup, currentGroupIndex);
             FlushArmedListenGroup(conductor, conductor.dspTime, allowImmediateLatePlayback: false);
+        }
+
+        // When listenRepeatFollowInitialBpm is on, group boundaries and the current position are
+        // measured in a constant-BPM grouping coordinate (fixed beat length at the level's starting
+        // BPM) so the listen/repeat windows keep a constant wall-clock duration across tempo changes.
+        // The mirrored tap cues inside the windows still use each floor's real entryTimePitchAdj.
+        private static bool FollowInitialBpm => ModSettings.Current.listenRepeatFollowInitialBpm;
+
+        private static List<scrFloor> GetFloors()
+        {
+            return ADOBase.lm != null ? ADOBase.lm.listFloors : null;
+        }
+
+        private static bool TryGetGroupBeat(scrController controller, scrConductor conductor, out double beat)
+        {
+            if (FollowInitialBpm && PlayModeTiming.TryGetGroupingBeat(conductor, GetFloors(), out beat))
+            {
+                return true;
+            }
+
+            return PlayModeTiming.TryGetCurrentBeat(controller, conductor, out beat);
+        }
+
+        private static double GetFloorGroupBeat(scrConductor conductor, scrFloor floor)
+        {
+            if (FollowInitialBpm)
+            {
+                return PlayModeTiming.GetGroupingBeatForFloor(conductor, GetFloors(), floor);
+            }
+
+            return floor.entryBeat;
+        }
+
+        private static bool TryGetBeatDsp(scrConductor conductor, List<scrFloor> floors, double beat, out double dsp)
+        {
+            if (FollowInitialBpm)
+            {
+                if (PlayModeTiming.GetBeatDurationSeconds(conductor) > 0.0)
+                {
+                    dsp = conductor.dspTimeSongPosZero + PlayModeTiming.GetGroupingTimeForBeat(conductor, floors, beat);
+                    return true;
+                }
+
+                dsp = 0.0;
+                return false;
+            }
+
+            return PlayModeTiming.TryGetCueDspForBeat(conductor, floors, beat, out dsp);
+        }
+
+        private static bool TryGetBeatFloorTime(scrConductor conductor, List<scrFloor> floors, double beat, out double floorTime)
+        {
+            if (FollowInitialBpm)
+            {
+                if (PlayModeTiming.GetBeatDurationSeconds(conductor) > 0.0)
+                {
+                    floorTime = PlayModeTiming.GetGroupingTimeForBeat(conductor, floors, beat);
+                    return true;
+                }
+
+                floorTime = 0.0;
+                return false;
+            }
+
+            return PlayModeTiming.TryGetEntryTimePitchAdjustedForBeat(floors, beat, out floorTime);
         }
 
         internal static void ResetForModeSwitch()
@@ -311,8 +376,8 @@ namespace ADOFAI_Access
 
                 double listenStartBeat = request.ListenGroupIndex * (double)beatsPerGroup;
                 double listenEndBeat = listenStartBeat + beatsPerGroup;
-                if (!PlayModeTiming.TryGetCueDspForBeat(conductor, floors, listenStartBeat, out double listenStartDsp) ||
-                    !PlayModeTiming.TryGetCueDspForBeat(conductor, floors, listenEndBeat, out double repeatStartDsp))
+                if (!TryGetBeatDsp(conductor, floors, listenStartBeat, out double listenStartDsp) ||
+                    !TryGetBeatDsp(conductor, floors, listenEndBeat, out double repeatStartDsp))
                 {
                     continue;
                 }
@@ -402,7 +467,7 @@ namespace ADOFAI_Access
                 return;
             }
 
-            if (!PlayModeTiming.TryGetCueDspForBeat(conductor, floors, markerBeat, out double boundaryDsp))
+            if (!TryGetBeatDsp(conductor, floors, markerBeat, out double boundaryDsp))
             {
                 return;
             }
@@ -476,8 +541,8 @@ namespace ADOFAI_Access
             double listenStartBeat = listenGroupIndex * (double)beatsPerGroup;
             double repeatStartBeat = repeatGroupIndex * (double)beatsPerGroup;
             double repeatEndBeat = repeatStartBeat + beatsPerGroup;
-            if (!PlayModeTiming.TryGetEntryTimePitchAdjustedForBeat(floors, listenStartBeat, out double listenStartTime) ||
-                !PlayModeTiming.TryGetEntryTimePitchAdjustedForBeat(floors, repeatStartBeat, out double repeatStartTime))
+            if (!TryGetBeatFloorTime(conductor, floors, listenStartBeat, out double listenStartTime) ||
+                !TryGetBeatFloorTime(conductor, floors, repeatStartBeat, out double repeatStartTime))
             {
                 return null;
             }
@@ -499,7 +564,8 @@ namespace ADOFAI_Access
                     continue;
                 }
 
-                if (floor.entryBeat < repeatStartBeat || floor.entryBeat >= repeatEndBeat)
+                double floorGroupBeat = GetFloorGroupBeat(conductor, floor);
+                if (floorGroupBeat < repeatStartBeat || floorGroupBeat >= repeatEndBeat)
                 {
                     continue;
                 }
