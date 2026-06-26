@@ -443,6 +443,9 @@
 		<EmbeddedResource Include="Audio\tap.wav">
 			<LogicalName>ADOFAI_Access.Audio.tap.wav</LogicalName>
 		</EmbeddedResource>
+		<EmbeddedResource Include="Audio\extra_tap.wav">
+			<LogicalName>ADOFAI_Access.Audio.extra_tap.wav</LogicalName>
+		</EmbeddedResource>
 		<EmbeddedResource Include="Audio\listen_start.wav">
 			<LogicalName>ADOFAI_Access.Audio.listen_start.wav</LogicalName>
 		</EmbeddedResource>

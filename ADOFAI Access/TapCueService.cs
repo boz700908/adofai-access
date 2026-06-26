@@ -44,6 +44,14 @@ namespace ADOFAI_Access
             GeneratedClipName = "ADOFAI_Access_DefaultPreviewCue",
             GeneratedToneHz = 1760f
         };
+        // Played in addition to the regular tap cue on multitap tiles (scrFloor.tapsNeeded > 1).
+        private static readonly CueClipState ExtraTapCueState = new CueClipState
+        {
+            FileName = "extra_tap.wav",
+            EmbeddedResourceName = "ADOFAI_Access.Audio.extra_tap.wav",
+            GeneratedClipName = "ADOFAI_Access_DefaultExtraTapCue",
+            GeneratedToneHz = 2093.0f
+        };
         private static readonly CueClipState ListenStartCueState = new CueClipState
         {
             FileName = "listen_start.wav",
@@ -66,12 +74,30 @@ namespace ADOFAI_Access
 
         public static void PlayCueNow()
         {
+            PlayCueNow(multiTap: false);
+        }
+
+        public static void PlayCueNow(bool multiTap)
+        {
             PlayCueNow(TapCueState);
+            if (multiTap)
+            {
+                PlayCueNow(ExtraTapCueState);
+            }
         }
 
         public static void PlayCueAt(double dspTime)
         {
+            PlayCueAt(dspTime, multiTap: false);
+        }
+
+        public static void PlayCueAt(double dspTime, bool multiTap)
+        {
             PlayCueAt(TapCueState, dspTime);
+            if (multiTap)
+            {
+                PlayCueAt(ExtraTapCueState, dspTime);
+            }
         }
 
         public static void PlayListenStartNow()

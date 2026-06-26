@@ -271,14 +271,15 @@ namespace ADOFAI_Access
                 }
 
                 HandledSeqIds.Add(floor.seqID);
+                bool multiTap = floor.tapsNeeded > 1;
                 if (untilDue >= 0.0)
                 {
-                    TapCueService.PlayCueAt(dueDsp);
+                    TapCueService.PlayCueAt(dueDsp, multiTap);
                 }
                 else if (untilDue >= -CueLateGraceSeconds)
                 {
                     // Slightly past center due to frame timing: play immediately as late-grace fallback.
-                    TapCueService.PlayCueNow();
+                    TapCueService.PlayCueNow(multiTap);
                 }
             }
         }

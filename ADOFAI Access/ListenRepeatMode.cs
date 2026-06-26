@@ -13,6 +13,7 @@ namespace ADOFAI_Access
         {
             public int SeqId;
             public double CueDsp;
+            public bool MultiTap;
         }
 
         private sealed class ArmedListenGroup
@@ -584,7 +585,8 @@ namespace ADOFAI_Access
                 group.Cues.Add(new ListenCueEvent
                 {
                     SeqId = floor.seqID,
-                    CueDsp = previewDueDsp
+                    CueDsp = previewDueDsp,
+                    MultiTap = floor.tapsNeeded > 1
                 });
             }
 
@@ -612,11 +614,11 @@ namespace ADOFAI_Access
                 _armedListenGroup.ScheduledSeqIds.Add(cue.SeqId);
                 if (cue.CueDsp > nowDsp)
                 {
-                    TapCueService.PlayCueAt(cue.CueDsp);
+                    TapCueService.PlayCueAt(cue.CueDsp, cue.MultiTap);
                 }
                 else if (allowImmediateLatePlayback && cue.CueDsp < _armedListenGroup.RepeatStartDsp)
                 {
-                    TapCueService.PlayCueNow();
+                    TapCueService.PlayCueNow(cue.MultiTap);
                 }
             }
         }
