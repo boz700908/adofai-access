@@ -404,6 +404,8 @@ namespace ADOFAI_Access
                 }
             });
 
+            AddEntry("Import levels", OpenCustomLevelsImportPanel);
+
             AddEntry("Quit to main menu", () =>
             {
                 Close(speak: false);
@@ -555,6 +557,8 @@ namespace ADOFAI_Access
             AddEntry("Sort by song", () => ApplyClsSort(OptionsPanelsCLS.OptionName.Song, "song"));
             AddEntry("Sort by artist", () => ApplyClsSort(OptionsPanelsCLS.OptionName.Artist, "artist"));
             AddEntry("Sort by author", () => ApplyClsSort(OptionsPanelsCLS.OptionName.Author, "author"));
+
+            AddEntry("Import levels", OpenCustomLevelsImportPanel);
 
             AddEntry("Find", () =>
             {
@@ -742,6 +746,20 @@ namespace ADOFAI_Access
             }
 
             AddEntry("Read best record summary", () => MenuNarration.Speak("No saved records yet", interrupt: true));
+        }
+
+        private static void OpenCustomLevelsImportPanel()
+        {
+            scnCLS cls = ADOBase.cls;
+            if (cls == null || cls.importLevelPanel == null || ADOBase.isSwitch || ADOBase.isMobile)
+            {
+                MenuNarration.Speak("Import levels unavailable", interrupt: true);
+                return;
+            }
+
+            Close(speak: false);
+            MenuNarration.Speak("Opening import levels", interrupt: true);
+            cls.OpenImportPanel();
         }
 
         private static void BuildNeoCosmosEntries()

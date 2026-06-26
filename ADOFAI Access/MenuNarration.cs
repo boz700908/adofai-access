@@ -850,6 +850,11 @@ namespace ADOFAI_Access
                     controlType = "button";
                     valueState = string.Empty;
                     break;
+                case OptionsPanelsCLS.OptionName.OpenImportPanel:
+                    label = "Import levels";
+                    controlType = "button";
+                    valueState = string.Empty;
+                    break;
                 default:
                     controlType = "option";
                     valueState = option.selected ? "on" : string.Empty;
@@ -857,6 +862,86 @@ namespace ADOFAI_Access
             }
 
             Speak(ComposePhrase(label, controlType, valueState), interrupt: true);
+        }
+
+        private static bool _importPanelOpening;
+
+        // Set from the OnOpenImportPanel prefix so the first ShowContent after opening is prefixed
+        // with the screen title.
+        public static void MarkImportPanelOpening()
+        {
+            _importPanelOpening = true;
+        }
+
+        public static void SpeakImportContent(ImportLevelsCLS panel, ImportLevelsCLS.ContentType contentType)
+        {
+            bool opening = _importPanelOpening;
+            _importPanelOpening = false;
+
+            if (AccessSettingsMenu.IsOpen || !ModSettings.Current.menuNarrationEnabled || ADOBase.isLevelEditor)
+            {
+                return;
+            }
+
+            string body;
+            GameObject focus = null;
+            switch (contentType)
+            {
+                case ImportLevelsCLS.ContentType.BrowseFiles:
+                    body = "Browse files. Browse local, or add from URL.";
+                    focus = panel != null && panel.browseLocalButton != null ? panel.browseLocalButton.gameObject : null;
+                    break;
+                case ImportLevelsCLS.ContentType.URLView:
+                    body = "Add from URL. Enter a URL in the text field, then add levels.";
+                    focus = panel != null && panel.urlInput != null ? panel.urlInput.gameObject : null;
+                    break;
+                case ImportLevelsCLS.ContentType.InstallContent:
+                    body = "Install levels.";
+                    focus = panel != null && panel.installButton != null ? panel.installButton.gameObject : null;
+                    break;
+                case ImportLevelsCLS.ContentType.NoLevels:
+                    body = "No custom levels found. Import a level, open the workshop, or press R to refresh.";
+                    focus = panel != null && panel.importButtonNoLevels != null && panel.importButtonNoLevels.gameObject.activeInHierarchy
+                        ? panel.importButtonNoLevels.gameObject
+                        : (panel != null && panel.workshopButtonNoLevels != null ? panel.workshopButtonNoLevels.gameObject : null);
+                    break;
+                default:
+                    body = string.Empty;
+                    break;
+            }
+
+            if (!string.IsNullOrEmpty(body))
+            {
+                string intro = opening ? "Import levels. " : string.Empty;
+                string hint = opening ? " Escape to close." : string.Empty;
+                Speak(intro + body + hint, interrupt: true);
+            }
+
+            SetEventSystemFocus(focus);
+        }
+
+        public static void SpeakImportClosed()
+        {
+            if (AccessSettingsMenu.IsOpen || !ModSettings.Current.menuNarrationEnabled || ADOBase.isLevelEditor)
+            {
+                return;
+            }
+
+            Speak("Import closed", interrupt: true);
+        }
+
+        private static void SetEventSystemFocus(GameObject target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            EventSystem eventSystem = EventSystem.current;
+            if (eventSystem != null)
+            {
+                eventSystem.SetSelectedGameObject(target);
+            }
         }
 
         private static bool TryDescribeSelected(GameObject selected, out string label, out string controlType, out string valueState)
@@ -1820,6 +1905,33 @@ namespace ADOFAI_Access
             }
 
             MenuNarration.SpeakCustomLevelsPanel(left, show);
+        }
+    }
+
+    [HarmonyPatch(typeof(ImportLevelsCLS), nameof(ImportLevelsCLS.OnOpenImportPanel))]
+    internal static class ImportPanelOpenPatch
+    {
+        private static void Prefix()
+        {
+            MenuNarration.MarkImportPanelOpening();
+        }
+    }
+
+    [HarmonyPatch(typeof(ImportLevelsCLS), nameof(ImportLevelsCLS.ShowContent))]
+    internal static class ImportPanelShowContentPatch
+    {
+        private static void Postfix(ImportLevelsCLS __instance, ImportLevelsCLS.ContentType contentType)
+        {
+            MenuNarration.SpeakImportContent(__instance, contentType);
+        }
+    }
+
+    [HarmonyPatch(typeof(ImportLevelsCLS), nameof(ImportLevelsCLS.HideImportPanel))]
+    internal static class ImportPanelHidePatch
+    {
+        private static void Postfix()
+        {
+            MenuNarration.SpeakImportClosed();
         }
     }
 }
